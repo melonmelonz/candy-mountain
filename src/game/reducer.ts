@@ -72,9 +72,11 @@ export function tick(state: RoomState, now: number, cfg: RoomConfig): TickResult
   const perSide = desiredSpotsPerSide(active.length, cfg);
 
   // Relayout only when the spot count changes (keeps positions stable otherwise).
+  // Left-count alone is sufficient: layoutSpots always produces symmetric (equal left/right) counts.
   const currentPerSide = state.spots.filter((s) => s.side === "left").length;
   let spots = perSide === currentPerSide ? state.spots : layoutSpots(perSide, cfg);
 
+  // computeCoverage rewrites every covered flag from scratch, so any stale flags on reused spots are overwritten here.
   spots = computeCoverage(spots, state.players, active, cfg);
   const covered = allCovered(spots);
   let charge = stepCharge(state.charge, covered, cfg);

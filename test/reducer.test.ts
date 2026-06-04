@@ -136,3 +136,50 @@ test("tick does not open below minimum active players", () => {
   expect(out.opened).toBe(false);
   expect(out.state.spots.length).toBe(0);
 });
+
+test("tick no-relayout: stale covered flags recomputed; charge rises then decays", () => {
+  // layoutSpots(1, ROOM_CONFIG) produces left={x:288,y:360}, right={x:992,y:360}
+  const initialSpots = layoutSpots(1, ROOM_CONFIG);
+  const L = initialSpots.find((s) => s.side === "left")!;
+  const R = initialSpots.find((s) => s.side === "right")!;
+  const now = 5_000;
+  const startCharge = 10;
+
+  // Seed spots with covered:true to prove computeCoverage overwrites stale flags on tick 2
+  const staleSpots: typeof initialSpots = initialSpots.map((s) => ({ ...s, covered: true }));
+
+  const base: RoomState = {
+    players: {
+      l: { ...mk("l", now), pos: { ...L.pos } },
+      r: { ...mk("r", now), pos: { ...R.pos } },
+    },
+    spots: staleSpots,
+    charge: startCharge,
+    dayId: "2026-06-04",
+  };
+
+  // Tick 1: both players standing on their spots — all covered, charge rises, no relayout
+  const out1 = tick(base, now, ROOM_CONFIG);
+  expect(out1.opened).toBe(false);
+  expect(out1.state.charge).toBe(startCharge + ROOM_CONFIG.chargeRisePerTick);
+  expect(out1.state.spots.length).toBe(2);
+  // Positions must be identical (no relayout occurred)
+  expect(out1.state.spots.find((s) => s.side === "left")!.pos).toEqual(L.pos);
+  expect(out1.state.spots.find((s) => s.side === "right")!.pos).toEqual(R.pos);
+
+  // Tick 2: move both players far away — spots no longer covered; charge decays
+  const chargeAfterTick1 = out1.state.charge;
+  const state2: RoomState = {
+    ...out1.state,
+    players: {
+      l: { ...mk("l", now), pos: { x: 0, y: 0 } },
+      r: { ...mk("r", now), pos: { x: 0, y: 0 } },
+    },
+  };
+  const out2 = tick(state2, now, ROOM_CONFIG);
+  // Stale covered:true flags from tick 1 must have been recomputed to false
+  expect(out2.state.spots.every((s) => s.covered === false)).toBe(true);
+  // Charge decayed from the tick-1 value (floored at 0)
+  expect(out2.state.charge).toBe(Math.max(0, chargeAfterTick1 - ROOM_CONFIG.chargeDecayPerTick));
+  expect(out2.opened).toBe(false);
+});
