@@ -1,12 +1,15 @@
-import type { Facing, Spot } from "./types";
+import type { Cosmetics, Facing, Spot } from "./types";
 import type { PlayerWire } from "../protocol";
 import { ROOM_CONFIG } from "./config";
 
 export interface RemotePlayer extends PlayerWire { tx: number; ty: number; } // tx/ty = target for lerp
 
+const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 190, flair: "emblem" };
+
 export interface ClientWorld {
   selfId: string | null;
   self: { x: number; y: number; facing: Facing; moving: boolean };
+  selfCosmetics: Cosmetics;
   remotes: Map<string, RemotePlayer>;
   spots: Spot[];
   charge: number;
@@ -16,6 +19,7 @@ export function createWorld(): ClientWorld {
   return {
     selfId: null,
     self: { x: ROOM_CONFIG.arenaWidth / 2, y: ROOM_CONFIG.arenaHeight / 2, facing: "down", moving: false },
+    selfCosmetics: DEFAULT_COSMETICS,
     remotes: new Map(),
     spots: [],
     charge: 0,
