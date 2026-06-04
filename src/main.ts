@@ -1,13 +1,38 @@
+import { createWorld, applyState, interpolateRemotes, stepSelf } from "./game/world";
+import { createInput } from "./game/input";
+import { drawPlaceholder } from "./game/render";
+import { loadOrCreateCosmetics } from "./game/cosmetics";
+import { connect } from "./net";
+
 const app = document.getElementById("app")!;
 const canvas = document.createElement("canvas");
 app.appendChild(canvas);
 const ctx = canvas.getContext("2d")!;
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+let vw = 0, vh = 0;
+function resize() { vw = canvas.width = innerWidth; vh = canvas.height = innerHeight; }
+addEventListener("resize", resize); resize();
+
+const world = createWorld();
+const input = createInput();
+const cosmetics = loadOrCreateCosmetics(localStorage);
+
+const net = connect({
+  onWelcome: (id, spawn) => { world.selfId = id; world.self.x = spawn.x; world.self.y = spawn.y; net.send({ t: "hello", cosmetics }); },
+  onState: (msg) => applyState(world, msg.players, msg.spots, msg.charge),
+  onOpen: (url) => { location.href = url; },
+});
+
+let last = performance.now();
+let lastSent = 0;
+function frame(now: number) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  stepSelf(world, input.state, dt);
+  interpolateRemotes(world);
+  if (now - lastSent > 66) { // ~15 Hz
+    lastSent = now;
+    net.send({ t: "move", x: world.self.x, y: world.self.y, facing: world.self.facing, moving: world.self.moving });
+  }
+  drawPlaceholder(ctx, world, vw, vh);
+  requestAnimationFrame(frame);
 }
-window.addEventListener("resize", resize);
-resize();
-ctx.fillStyle = "#7c5cff";
-ctx.font = "16px system-ui";
-ctx.fillText("candy mountain: scaffolding", 24, 40);
+requestAnimationFrame(frame);
