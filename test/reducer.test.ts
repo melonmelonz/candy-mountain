@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
-import { activePlayerIds, desiredSpotsPerSide, layoutSpots } from "../src/game/reducer";
+import { activePlayerIds, desiredSpotsPerSide, layoutSpots, computeCoverage, allCovered } from "../src/game/reducer";
 import { ROOM_CONFIG } from "../src/game/config";
-import type { Player } from "../src/game/types";
+import type { Player, Spot } from "../src/game/types";
 
 function mk(id: string, lastInputAt: number): Player {
   return { id, pos: { x: 0, y: 0 }, facing: "down", moving: false,
@@ -40,4 +40,62 @@ test("layoutSpots is deterministic", () => {
 
 test("layoutSpots with 0 per side is empty", () => {
   expect(layoutSpots(0, ROOM_CONFIG)).toEqual([]);
+});
+
+// --- computeCoverage / allCovered ---
+
+function mkSpot(id: string, x: number, y: number): Spot {
+  return { id, side: "left", pos: { x, y }, covered: false };
+}
+
+test("player within spotRadius covers spot", () => {
+  const spot = mkSpot("s0", 100, 100);
+  // player is 30px away — inside radius of 36
+  const players = { a: { ...mk("a", 0), pos: { x: 130, y: 100 } } };
+  const result = computeCoverage([spot], players, ["a"], ROOM_CONFIG);
+  expect(result[0].covered).toBe(true);
+});
+
+test("player just outside spotRadius does not cover spot", () => {
+  const spot = mkSpot("s0", 100, 100);
+  // player is 37px away — outside radius of 36
+  const players = { a: { ...mk("a", 0), pos: { x: 137, y: 100 } } };
+  const result = computeCoverage([spot], players, ["a"], ROOM_CONFIG);
+  expect(result[0].covered).toBe(false);
+});
+
+test("player at exactly spotRadius distance covers spot (boundary inclusive)", () => {
+  const spot = mkSpot("s0", 100, 100);
+  // player is exactly 36px away
+  const players = { a: { ...mk("a", 0), pos: { x: 136, y: 100 } } };
+  const result = computeCoverage([spot], players, ["a"], ROOM_CONFIG);
+  expect(result[0].covered).toBe(true);
+});
+
+test("idle player not in activeIds does not cover spot", () => {
+  const spot = mkSpot("s0", 100, 100);
+  // player is on the spot but is NOT in activeIds
+  const players = { idle: { ...mk("idle", 0), pos: { x: 100, y: 100 } } };
+  const result = computeCoverage([spot], players, [], ROOM_CONFIG);
+  expect(result[0].covered).toBe(false);
+});
+
+test("computeCoverage returns new spot objects without mutating originals", () => {
+  const spot = mkSpot("s0", 100, 100);
+  const players = { a: { ...mk("a", 0), pos: { x: 100, y: 100 } } };
+  const result = computeCoverage([spot], players, ["a"], ROOM_CONFIG);
+  // result spot should be covered
+  expect(result[0].covered).toBe(true);
+  // original spot must not be mutated
+  expect(spot.covered).toBe(false);
+  // different object reference
+  expect(result[0]).not.toBe(spot);
+});
+
+test("allCovered returns correct results", () => {
+  const covered: Spot = { id: "a", side: "left", pos: { x: 0, y: 0 }, covered: true };
+  const uncovered: Spot = { id: "b", side: "right", pos: { x: 0, y: 0 }, covered: false };
+  expect(allCovered([covered, covered])).toBe(true);
+  expect(allCovered([covered, uncovered])).toBe(false);
+  expect(allCovered([])).toBe(false);
 });

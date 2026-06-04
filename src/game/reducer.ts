@@ -33,3 +33,26 @@ export function layoutSpots(perSide: number, cfg: RoomConfig): Spot[] {
   }
   return spots;
 }
+
+export function computeCoverage(
+  spots: Spot[],
+  players: Record<PlayerId, Player>,
+  activeIds: PlayerId[],
+  cfg: RoomConfig,
+): Spot[] {
+  const r2 = cfg.spotRadius * cfg.spotRadius;
+  return spots.map((spot) => {
+    const covered = activeIds.some((id) => {
+      const p = players[id];
+      if (!p) return false;
+      const dx = p.pos.x - spot.pos.x;
+      const dy = p.pos.y - spot.pos.y;
+      return dx * dx + dy * dy <= r2;
+    });
+    return { ...spot, covered };
+  });
+}
+
+export function allCovered(spots: Spot[]): boolean {
+  return spots.length > 0 && spots.every((s) => s.covered);
+}
