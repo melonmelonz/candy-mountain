@@ -1,7 +1,8 @@
 import type { ClientWorld } from "./world";
 import { ROOM_CONFIG } from "./config";
+import { drawPortal } from "./portalfx";
 
-export function drawPlaceholder(ctx: CanvasRenderingContext2D, world: ClientWorld, vw: number, vh: number) {
+export function drawPlaceholder(ctx: CanvasRenderingContext2D, world: ClientWorld, vw: number, vh: number, tMs: number) {
   const sx = vw / ROOM_CONFIG.arenaWidth;
   const sy = vh / ROOM_CONFIG.arenaHeight;
   ctx.clearRect(0, 0, vw, vh);
@@ -14,10 +15,7 @@ export function drawPlaceholder(ctx: CanvasRenderingContext2D, world: ClientWorl
 
   // portal brightness reflects charge
   const cx = ROOM_CONFIG.seamX * sx, cy = (ROOM_CONFIG.arenaHeight / 2) * sy;
-  ctx.globalAlpha = 0.3 + (world.charge / 100) * 0.7;
-  ctx.fillStyle = "#7c5cff";
-  ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = 1;
+  drawPortal(ctx, cx, cy, 48 * sx, world.charge, tMs);
 
   // spots
   for (const s of world.spots) {

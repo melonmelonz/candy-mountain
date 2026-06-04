@@ -32,7 +32,7 @@ function frame(now: number) {
     lastSent = now;
     net.send({ t: "move", x: world.self.x, y: world.self.y, facing: world.self.facing, moving: world.self.moving });
   }
-  drawPlaceholder(ctx, world, vw, vh);
+  drawPlaceholder(ctx, world, vw, vh, now);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
