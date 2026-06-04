@@ -14,6 +14,15 @@ const STARS = Array.from({ length: 140 }, (_, i) => {
   return { x: r, y: g, tw: (i % 7) / 7 };
 });
 
+// Larger, soft motes that drift slowly across the void.
+const MOTES = Array.from({ length: 22 }, (_, i) => {
+  const x = ((i * 22695477 + 1) >>> 0) / 0xffffffff;
+  const y = ((i * 69069 + 13) >>> 0) / 0xffffffff;
+  const sp = 0.004 + (i % 5) * 0.0015;
+  const hue = i % 2 ? 272 : 196;
+  return { x, y, sp, hue, r: 1.5 + (i % 4) * 0.8 };
+});
+
 function drawBackground(ctx: CanvasRenderingContext2D, vw: number, vh: number, tMs: number) {
   ctx.fillStyle = "#060414";
   ctx.fillRect(0, 0, vw, vh);
@@ -32,7 +41,55 @@ function drawBackground(ctx: CanvasRenderingContext2D, vw: number, vh: number, t
     ctx.fillStyle = "#cfe8ff";
     ctx.fillRect(s.x * vw, s.y * vh, 1.5, 1.5);
   }
+
+  // drifting glow motes
+  ctx.globalCompositeOperation = "lighter";
+  for (const m of MOTES) {
+    const px = ((m.x + tMs / 1000 * m.sp) % 1) * vw;
+    const py = ((m.y + tMs / 1000 * m.sp * 0.6) % 1) * vh;
+    const a = 0.10 + 0.06 * Math.sin(tMs / 900 + m.x * 10);
+    const g = ctx.createRadialGradient(px, py, 0, px, py, m.r * 6);
+    g.addColorStop(0, `hsla(${m.hue},90%,70%,${a})`);
+    g.addColorStop(1, `hsla(${m.hue},90%,70%,0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(px, py, m.r * 6, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
+
+  // vignette to focus the eye on the arena center
+  const vig = ctx.createRadialGradient(vw / 2, vh / 2, Math.min(vw, vh) * 0.35, vw / 2, vh / 2, Math.max(vw, vh) * 0.7);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(1, "rgba(0,0,0,0.55)");
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, vw, vh);
+}
+
+// Cinematic "portal swallows the screen" open sequence. k goes 0..1.
+// The portal blooms outward from its arena position, then flashes white.
+export function drawOpenTransition(ctx: CanvasRenderingContext2D, vw: number, vh: number, k: number) {
+  const sx = vw / ROOM_CONFIG.arenaWidth;
+  const sy = vh / ROOM_CONFIG.arenaHeight;
+  const cx = ROOM_CONFIG.seamX * sx, cy = (ROOM_CONFIG.arenaHeight / 2) * sy;
+  const diag = Math.hypot(vw, vh);
+  const ease = k * k;
+  const r = diag * (0.08 + ease * 1.15);
+  const white = Math.max(0, (k - 0.6) / 0.4);
+
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, `rgba(255,255,255,${0.65 + 0.35 * white})`);
+  g.addColorStop(0.3, `hsla(196,100%,72%,0.6)`);
+  g.addColorStop(0.7, `hsla(272,90%,55%,0.5)`);
+  g.addColorStop(1, `hsla(272,90%,30%,0)`);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, vw, vh);
+  ctx.globalCompositeOperation = "source-over";
+
+  if (white > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${white})`;
+    ctx.fillRect(0, 0, vw, vh);
+  }
 }
 
 // Per-cosmetic flair drawn over the sprite at its screen anchor.
@@ -76,9 +133,17 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   ctx.clearRect(0, 0, vw, vh);
   drawBackground(ctx, vw, vh, tMs);
 
-  // portal brightness reflects charge
+  // subtle divide marking the split (no UI, just a faint vertical current)
   const cx = ROOM_CONFIG.seamX * sx, cy = (ROOM_CONFIG.arenaHeight / 2) * sy;
-  drawPortal(ctx, cx, cy, 48 * sx, world.charge, tMs);
+  const seam = ctx.createLinearGradient(0, 0, 0, vh);
+  seam.addColorStop(0, "hsla(265,90%,60%,0)");
+  seam.addColorStop(0.5, "hsla(220,95%,68%,0.16)");
+  seam.addColorStop(1, "hsla(265,90%,60%,0)");
+  ctx.fillStyle = seam;
+  ctx.fillRect(cx - 1, 0, 2, vh);
+
+  // portal brightness reflects charge
+  drawPortal(ctx, cx, cy, 72 * sx, world.charge, tMs);
 
   // spots
   for (const s of world.spots) {

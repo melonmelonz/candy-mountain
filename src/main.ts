@@ -1,6 +1,6 @@
 import { createWorld, applyState, interpolateRemotes, stepSelf } from "./game/world";
 import { createInput } from "./game/input";
-import { drawScene } from "./game/render";
+import { drawScene, drawOpenTransition } from "./game/render";
 import { loadOrCreateCosmetics } from "./game/cosmetics";
 import { loadAssets } from "./game/assets";
 import { connect } from "./net";
@@ -40,9 +40,8 @@ async function start() {
     }
     drawScene(ctx, world, assets, vw, vh, now);
     if (opening) {
-      const k = Math.min(1, (now - opening.start) / 900);
-      ctx.fillStyle = `rgba(255,255,255,${k})`;
-      ctx.fillRect(0, 0, vw, vh);
+      const k = Math.min(1, (now - opening.start) / 1200);
+      drawOpenTransition(ctx, vw, vh, k);
       if (k >= 1 && !opening.fired) { opening.fired = true; location.href = opening.url; }
     }
     requestAnimationFrame(frame);
