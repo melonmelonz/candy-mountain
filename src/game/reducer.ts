@@ -56,3 +56,34 @@ export function computeCoverage(
 export function allCovered(spots: Spot[]): boolean {
   return spots.length > 0 && spots.every((s) => s.covered);
 }
+
+export function stepCharge(charge: number, covered: boolean, cfg: RoomConfig): number {
+  const next = covered ? charge + cfg.chargeRisePerTick : charge - cfg.chargeDecayPerTick;
+  return Math.max(0, Math.min(100, next));
+}
+
+export interface TickResult {
+  state: RoomState;
+  opened: boolean;
+}
+
+export function tick(state: RoomState, now: number, cfg: RoomConfig): TickResult {
+  const active = activePlayerIds(state.players, now, cfg);
+  const perSide = desiredSpotsPerSide(active.length, cfg);
+
+  // Relayout only when the spot count changes (keeps positions stable otherwise).
+  const currentPerSide = state.spots.filter((s) => s.side === "left").length;
+  let spots = perSide === currentPerSide ? state.spots : layoutSpots(perSide, cfg);
+
+  spots = computeCoverage(spots, state.players, active, cfg);
+  const covered = allCovered(spots);
+  let charge = stepCharge(state.charge, covered, cfg);
+
+  let opened = false;
+  if (charge >= 100) {
+    opened = true;
+    charge = 0; // reset so a future crowd can re-open
+  }
+
+  return { state: { ...state, spots, charge }, opened };
+}

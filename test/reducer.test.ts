@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
-import { activePlayerIds, desiredSpotsPerSide, layoutSpots, computeCoverage, allCovered } from "../src/game/reducer";
+import { activePlayerIds, desiredSpotsPerSide, layoutSpots, computeCoverage, allCovered, stepCharge, tick } from "../src/game/reducer";
 import { ROOM_CONFIG } from "../src/game/config";
-import type { Player, Spot } from "../src/game/types";
+import type { Player, RoomState, Spot } from "../src/game/types";
 
 function mk(id: string, lastInputAt: number): Player {
   return { id, pos: { x: 0, y: 0 }, facing: "down", moving: false,
@@ -98,4 +98,41 @@ test("allCovered returns correct results", () => {
   expect(allCovered([covered, covered])).toBe(true);
   expect(allCovered([covered, uncovered])).toBe(false);
   expect(allCovered([])).toBe(false);
+});
+
+test("charge rises when all covered, decays otherwise, clamped 0..100", () => {
+  const cfg = ROOM_CONFIG;
+  expect(stepCharge(0, false, cfg)).toBe(0);
+  expect(stepCharge(10, false, cfg)).toBe(10 - cfg.chargeDecayPerTick);
+  expect(stepCharge(0, true, cfg)).toBe(cfg.chargeRisePerTick);
+  expect(stepCharge(99, true, cfg)).toBe(100);
+});
+
+test("tick relayouts spots when active count changes and opens at full charge", () => {
+  const cfg = { ...ROOM_CONFIG, chargeRisePerTick: 100 }; // open in one tick when covered
+  const base = { players: {}, spots: [], charge: 0, dayId: "2026-06-04" } as RoomState;
+  const spots = layoutSpots(1, cfg);
+  const L = spots.find((s) => s.side === "left")!;
+  const R = spots.find((s) => s.side === "right")!;
+  const now = 1000;
+  base.players = {
+    l: { ...mk("l", now), pos: { ...L.pos } },
+    r: { ...mk("r", now), pos: { ...R.pos } },
+  };
+  const out = tick(base, now, cfg);
+  expect(out.state.spots.length).toBe(2);
+  expect(out.opened).toBe(true);
+  expect(out.state.charge).toBe(0); // reset after open
+});
+
+test("tick does not open below minimum active players", () => {
+  const cfg = { ...ROOM_CONFIG, chargeRisePerTick: 100 };
+  const now = 1000;
+  const base: RoomState = {
+    players: { solo: { ...mk("solo", now), pos: { x: 0, y: 0 } } },
+    spots: [], charge: 0, dayId: "2026-06-04",
+  };
+  const out = tick(base, now, cfg);
+  expect(out.opened).toBe(false);
+  expect(out.state.spots.length).toBe(0);
 });
