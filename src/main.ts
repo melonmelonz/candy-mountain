@@ -18,12 +18,12 @@ const input = createInput();
 const cosmetics = loadOrCreateCosmetics(localStorage);
 world.selfCosmetics = cosmetics;
 
-let opening: { url: string; start: number } | null = null;
+let opening: { url: string; start: number; fired: boolean } | null = null;
 
 const net = connect({
   onWelcome: (id, spawn) => { world.selfId = id; world.self.x = spawn.x; world.self.y = spawn.y; net.send({ t: "hello", cosmetics }); },
   onState: (msg) => applyState(world, msg.players, msg.spots, msg.charge),
-  onOpen: (url) => { opening = { url, start: performance.now() }; },
+  onOpen: (url) => { if (!opening) opening = { url, start: performance.now(), fired: false }; },
 });
 
 async function start() {
@@ -43,7 +43,7 @@ async function start() {
       const k = Math.min(1, (now - opening.start) / 900);
       ctx.fillStyle = `rgba(255,255,255,${k})`;
       ctx.fillRect(0, 0, vw, vh);
-      if (k >= 1) location.href = opening.url;
+      if (k >= 1 && !opening.fired) { opening.fired = true; location.href = opening.url; }
     }
     requestAnimationFrame(frame);
   }
