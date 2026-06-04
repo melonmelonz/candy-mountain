@@ -16,10 +16,12 @@ const world = createWorld();
 const input = createInput();
 const cosmetics = loadOrCreateCosmetics(localStorage);
 
+let opening: { url: string; start: number } | null = null;
+
 const net = connect({
   onWelcome: (id, spawn) => { world.selfId = id; world.self.x = spawn.x; world.self.y = spawn.y; net.send({ t: "hello", cosmetics }); },
   onState: (msg) => applyState(world, msg.players, msg.spots, msg.charge),
-  onOpen: (url) => { location.href = url; },
+  onOpen: (url) => { opening = { url, start: performance.now() }; },
 });
 
 let last = performance.now();
@@ -33,6 +35,12 @@ function frame(now: number) {
     net.send({ t: "move", x: world.self.x, y: world.self.y, facing: world.self.facing, moving: world.self.moving });
   }
   drawPlaceholder(ctx, world, vw, vh, now);
+  if (opening) {
+    const k = Math.min(1, (now - opening.start) / 900);
+    ctx.fillStyle = `rgba(255,255,255,${k})`;
+    ctx.fillRect(0, 0, vw, vh);
+    if (k >= 1) location.href = opening.url;
+  }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

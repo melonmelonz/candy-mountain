@@ -19,9 +19,18 @@ export function drawPlaceholder(ctx: CanvasRenderingContext2D, world: ClientWorl
 
   // spots
   for (const s of world.spots) {
-    ctx.strokeStyle = s.side === "left" ? "#00e0ff" : "#ff8ad1";
-    ctx.globalAlpha = s.covered ? 1 : 0.4;
-    ctx.beginPath(); ctx.arc(s.pos.x * sx, s.pos.y * sy, ROOM_CONFIG.spotRadius * sx, 0, Math.PI * 2); ctx.stroke();
+    const base = s.side === "left" ? "#00e0ff" : "#ff8ad1";
+    const r = ROOM_CONFIG.spotRadius * sx;
+    if (s.covered) {
+      const pulse = 0.6 + 0.4 * Math.sin(tMs / 200);
+      ctx.globalAlpha = pulse;
+      const g = ctx.createRadialGradient(s.pos.x * sx, s.pos.y * sy, 0, s.pos.x * sx, s.pos.y * sy, r);
+      g.addColorStop(0, base); g.addColorStop(1, "transparent");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.pos.x * sx, s.pos.y * sy, r, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.globalAlpha = 0.35; ctx.setLineDash([6, 6]); ctx.strokeStyle = base;
+      ctx.beginPath(); ctx.arc(s.pos.x * sx, s.pos.y * sy, r, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    }
   }
   ctx.globalAlpha = 1;
 
