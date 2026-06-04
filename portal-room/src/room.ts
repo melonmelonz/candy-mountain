@@ -1,5 +1,5 @@
 import type { Env } from "./index";
-import type { Player, PlayerId, RoomState, Cosmetics } from "../../src/game/types";
+import type { Player, PlayerId, RoomState, Cosmetics, Facing, Flair } from "../../src/game/types";
 import { ROOM_CONFIG } from "../../src/game/config";
 import { tick } from "../../src/game/reducer";
 import { encode, decode, type ClientMsg, type PlayerWire, type ServerMsg } from "../../src/protocol";
@@ -7,9 +7,35 @@ import { todaysLink } from "./links";
 
 const TICK_MS = 100; // 10 Hz
 const SPAWN_MARGIN = 80;
+const FACINGS: Facing[] = ["up", "down", "left", "right"];
+const FLAIRS: Flair[] = ["antenna", "backpack", "trail", "emblem"];
+const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 0, flair: "antenna" };
+
+interface SocketAttachment {
+  id: PlayerId;
+  cosmetics: Cosmetics;
+}
 
 function dayIdNow(): string {
   return new Date().toISOString().slice(0, 10); // UTC day boundary
+}
+
+function randomSpawn(): { x: number; y: number } {
+  return {
+    x: SPAWN_MARGIN + Math.random() * (ROOM_CONFIG.arenaWidth - SPAWN_MARGIN * 2),
+    y: SPAWN_MARGIN + Math.random() * (ROOM_CONFIG.arenaHeight - SPAWN_MARGIN * 2),
+  };
+}
+
+function sanitizeCosmetics(raw: unknown): Cosmetics {
+  if (typeof raw !== "object" || raw === null) return { ...DEFAULT_COSMETICS };
+  const c = raw as Record<string, unknown>;
+  const hue =
+    typeof c.hue === "number" && Number.isFinite(c.hue) ? (((c.hue % 360) + 360) % 360) : 0;
+  const visorHue =
+    typeof c.visorHue === "number" && Number.isFinite(c.visorHue) ? (((c.visorHue % 360) + 360) % 360) : 0;
+  const flair = FLAIRS.includes(c.flair as Flair) ? (c.flair as Flair) : "antenna";
+  return { hue, visorHue, flair };
 }
 
 export class PortalRoom implements DurableObject {
@@ -20,11 +46,27 @@ export class PortalRoom implements DurableObject {
   private alarmSet = false;
 
   constructor(private state: DurableObjectState, private env: Env) {
-    // Re-adopt sockets that survived hibernation.
+    // In-memory state is lost on hibernation eviction; getWebSockets() is the
+    // source of truth. Re-adopt surviving sockets AND rebuild their player
+    // records so reconnected players are not permanently ghosted. Position is
+    // not preserved across eviction (would cost a storage write per tick), so
+    // players respawn; cosmetics persist via the socket attachment.
     for (const ws of this.state.getWebSockets()) {
-      const id = (ws.deserializeAttachment() as { id: PlayerId } | null)?.id;
-      if (id) this.socketFor.set(ws, id);
+      const att = ws.deserializeAttachment() as SocketAttachment | null;
+      if (!att?.id) continue;
+      this.socketFor.set(ws, att.id);
+      this.players[att.id] = {
+        id: att.id,
+        pos: randomSpawn(),
+        facing: "down",
+        moving: false,
+        cosmetics: att.cosmetics ?? { ...DEFAULT_COSMETICS },
+        lastInputAt: Date.now(),
+      };
     }
+    // If sockets survived but reconstruction was triggered by a message/close
+    // (not the alarm), the tick loop must be restarted.
+    if (this.state.getWebSockets().length > 0) this.ensureAlarm();
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -39,17 +81,18 @@ export class PortalRoom implements DurableObject {
     this.state.acceptWebSocket(server);
 
     const id = crypto.randomUUID();
-    server.serializeAttachment({ id });
+    const attachment: SocketAttachment = { id, cosmetics: { ...DEFAULT_COSMETICS } };
+    server.serializeAttachment(attachment);
     this.socketFor.set(server, id);
 
-    const spawn = {
-      x: SPAWN_MARGIN + Math.random() * (ROOM_CONFIG.arenaWidth - SPAWN_MARGIN * 2),
-      y: SPAWN_MARGIN + Math.random() * (ROOM_CONFIG.arenaHeight - SPAWN_MARGIN * 2),
-    };
+    const spawn = randomSpawn();
     const dayId = dayIdNow();
     this.players[id] = {
-      id, pos: spawn, facing: "down", moving: false,
-      cosmetics: { hue: 0, visorHue: 0, flair: "antenna" },
+      id,
+      pos: spawn,
+      facing: "down",
+      moving: false,
+      cosmetics: { ...DEFAULT_COSMETICS },
       lastInputAt: Date.now(),
     };
     server.send(encode({ t: "welcome", id, spawn, dayId } satisfies ServerMsg));
@@ -61,66 +104,112 @@ export class PortalRoom implements DurableObject {
   async webSocketMessage(ws: WebSocket, raw: string) {
     const id = this.socketFor.get(ws);
     if (!id) return;
-    const p = this.players[id];
-    if (!p) return;
-    const msg = decode<ClientMsg>(raw);
+
+    let msg: ClientMsg;
+    try {
+      msg = decode<ClientMsg>(raw);
+    } catch {
+      return; // ignore malformed frames
+    }
+    if (typeof msg !== "object" || msg === null) return;
+
+    // Lazily recreate a player record if it was lost (belt-and-suspenders with
+    // the constructor rebuild; covers any reconstruction edge).
+    let p = this.players[id];
+    if (!p) {
+      p = {
+        id,
+        pos: randomSpawn(),
+        facing: "down",
+        moving: false,
+        cosmetics: { ...DEFAULT_COSMETICS },
+        lastInputAt: Date.now(),
+      };
+      this.players[id] = p;
+    }
+
     p.lastInputAt = Date.now();
     if (msg.t === "hello") {
-      p.cosmetics = msg.cosmetics as Cosmetics;
+      p.cosmetics = sanitizeCosmetics(msg.cosmetics);
+      const att: SocketAttachment = { id, cosmetics: p.cosmetics };
+      ws.serializeAttachment(att);
     } else if (msg.t === "move") {
-      p.pos = {
-        x: Math.max(0, Math.min(ROOM_CONFIG.arenaWidth, msg.x)),
-        y: Math.max(0, Math.min(ROOM_CONFIG.arenaHeight, msg.y)),
-      };
-      p.facing = msg.facing;
-      p.moving = msg.moving;
+      const x = Number(msg.x);
+      const y = Number(msg.y);
+      if (Number.isFinite(x)) p.pos.x = Math.max(0, Math.min(ROOM_CONFIG.arenaWidth, x));
+      if (Number.isFinite(y)) p.pos.y = Math.max(0, Math.min(ROOM_CONFIG.arenaHeight, y));
+      if (FACINGS.includes(msg.facing)) p.facing = msg.facing;
+      p.moving = msg.moving === true;
     }
   }
 
-  async webSocketClose(ws: WebSocket) { this.drop(ws); }
-  async webSocketError(ws: WebSocket) { this.drop(ws); }
+  async webSocketClose(ws: WebSocket) {
+    this.drop(ws);
+  }
+  async webSocketError(ws: WebSocket) {
+    this.drop(ws);
+  }
 
   private drop(ws: WebSocket) {
     const id = this.socketFor.get(ws);
-    if (id) { delete this.players[id]; this.socketFor.delete(ws); }
+    if (id) {
+      delete this.players[id];
+      this.socketFor.delete(ws);
+    }
   }
 
   private ensureAlarm() {
-    if (!this.alarmSet) {
-      this.alarmSet = true;
-      this.state.storage.setAlarm(Date.now() + TICK_MS);
-    }
+    if (this.alarmSet) return;
+    this.alarmSet = true;
+    this.state.storage.setAlarm(Date.now() + TICK_MS).catch(() => {
+      // Allow a future re-arm if scheduling failed.
+      this.alarmSet = false;
+    });
   }
 
   async alarm() {
     this.alarmSet = false;
-    const now = Date.now();
-    const dayId = dayIdNow();
+    try {
+      const now = Date.now();
+      const dayId = dayIdNow();
 
-    const result = tick(
-      { players: this.players, spots: this.spots, charge: this.charge, dayId },
-      now, ROOM_CONFIG,
-    );
-    this.spots = result.state.spots;
-    this.charge = result.state.charge;
+      const result = tick(
+        { players: this.players, spots: this.spots, charge: this.charge, dayId },
+        now,
+        ROOM_CONFIG,
+      );
+      this.spots = result.state.spots;
+      this.charge = result.state.charge;
 
-    const playersWire: PlayerWire[] = Object.values(this.players).map((p) => ({
-      id: p.id, x: p.pos.x, y: p.pos.y, facing: p.facing, moving: p.moving, cosmetics: p.cosmetics,
-    }));
-    this.broadcast(encode({ t: "state", players: playersWire, spots: this.spots, charge: this.charge }));
+      const playersWire: PlayerWire[] = Object.values(this.players).map((p) => ({
+        id: p.id,
+        x: p.pos.x,
+        y: p.pos.y,
+        facing: p.facing,
+        moving: p.moving,
+        cosmetics: p.cosmetics,
+      }));
+      this.broadcast(
+        encode({ t: "state", players: playersWire, spots: this.spots, charge: this.charge }),
+      );
 
-    if (result.opened) {
-      const link = todaysLink(dayId);
-      this.broadcast(encode({ t: "open", url: link.url, title: link.title }));
+      if (result.opened) {
+        const link = todaysLink(dayId);
+        if (link) this.broadcast(encode({ t: "open", url: link.url, title: link.title }));
+      }
+    } finally {
+      // Keep ticking while anyone is connected, even if this tick threw.
+      if (this.state.getWebSockets().length > 0) this.ensureAlarm();
     }
-
-    // Keep ticking only while someone is connected.
-    if (this.state.getWebSockets().length > 0) this.ensureAlarm();
   }
 
   private broadcast(data: string) {
     for (const ws of this.state.getWebSockets()) {
-      try { ws.send(data); } catch { /* socket gone; cleaned on close */ }
+      try {
+        ws.send(data);
+      } catch {
+        /* socket gone; cleaned on close */
+      }
     }
   }
 }
