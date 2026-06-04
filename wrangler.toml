@@ -1,0 +1,8 @@
+name = "candy-mountain"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-09-23"
+
+[[durable_objects.bindings]]
+name = "PORTAL_ROOM"
+class_name = "PortalRoom"
+script_name = "candy-mountain-room"
