@@ -6,6 +6,7 @@ import { drawGate } from "./gate";
 import { drawCharacter, drawNegativeShimmerChar } from "./sprite";
 import { createBackground, drawBackground, type BgState } from "./background";
 import { drawGuide } from "./guide";
+import { createCamera, updateCamera, pushCamera } from "./camera";
 
 // Drifters near the gate catch its light: a soft additive halo that grows with
 // proximity and with portal charge. cx/cy/rPortal are the portal's screen geometry.
@@ -41,6 +42,7 @@ function drawGroundShadow(ctx: CanvasRenderingContext2D, px: number, py: number,
 // High-def parallax background state, recreated when the canvas size changes.
 let bg: BgState | null = null;
 let bgW = 0, bgH = 0;
+let cam = createCamera();
 
 // Cinematic "portal swallows the screen" bloom. k goes 0..1. The portal blooms
 // outward from its arena position. The caller layers transmission text, then the
@@ -186,12 +188,18 @@ function drawSpeechBubble(
 export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, assets: Assets, vw: number, vh: number, tMs: number) {
   const sx = vw / ROOM_CONFIG.arenaWidth;
   const sy = vh / ROOM_CONFIG.arenaHeight;
+  updateCamera(cam, world.self.x, world.self.y, tMs);
   ctx.clearRect(0, 0, vw, vh);
   if (!bg || bgW !== vw || bgH !== vh) { bg = createBackground(vw, vh); bgW = vw; bgH = vh; }
   drawBackground(ctx, bg, vw, vh, tMs, world.charge);
   // The high-def background draws with smoothing ON; the pixel-art gate/sprite
   // layers below rely on nearest-neighbor, so force it back off here.
   ctx.imageSmoothingEnabled = false;
+
+  // Cinematic camera: starts framed on the spawn side, locks to the full ritual
+  // frame (identity) once the local drifter funnels into the gate. Background
+  // stays outside this transform (stable full-screen cosmos).
+  pushCamera(ctx, cam, vw, vh);
 
   // subtle divide marking the split (no UI, just a faint vertical current)
   const cx = ROOM_CONFIG.seamX * sx, cy = (ROOM_CONFIG.arenaHeight / 2) * sy;
@@ -308,4 +316,6 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   if (world.self.bubble) {
     drawSpeechBubble(ctx, world.self.bubble.text, world.self.name || "you", spx, spy - 40 * scale, scale, world.selfCosmetics.visorHue, tMs, world.self.bubble.at);
   }
+
+  ctx.restore(); // pop the camera transform
 }
