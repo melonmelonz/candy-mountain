@@ -83,12 +83,40 @@ function getPlanetImg(src: string): HTMLImageElement {
   return img;
 }
 
+// The planet photos used by createBackground. Exported so main.ts can warm the
+// cache during the loading screen (alongside the sprite atlases) instead of
+// letting them stream in lazily on the first frame, which caused a visible
+// ~1s pop-in.
+export const PLANET_SRCS = [
+  "/sprites/space/jupiter.jpg",
+  "/sprites/space/earth.jpg",
+  "/sprites/space/mars.jpg",
+] as const;
+
+// Kick off (and await) loading of every planet photo. Resolves once all are
+// decoded or errored, so the first painted frame already has them. Errors are
+// swallowed: a missing planet should never block startup.
+export function preloadPlanets(): Promise<void> {
+  return Promise.all(
+    PLANET_SRCS.map(
+      (src) =>
+        new Promise<void>((resolve) => {
+          const img = getPlanetImg(src);
+          if (img.complete && img.naturalWidth > 0) return resolve();
+          img.addEventListener("load", () => resolve(), { once: true });
+          img.addEventListener("error", () => resolve(), { once: true });
+        }),
+    ),
+  ).then(() => undefined);
+}
+
 export interface BgState {
   layers: StarLayer[];
   nebulae: Nebula[];
   planets: Planet[];
   w: number;
   h: number;
+  baseGrad: CanvasGradient | null; // cached deep-space gradient (rebuilt on resize)
 }
 
 // --- construction ----------------------------------------------------------
@@ -175,7 +203,7 @@ export function createBackground(w: number, h: number): BgState {
       rimHue: 205,
     },
     {
-      img: getPlanetImg("/sprites/space/mars.png"),
+      img: getPlanetImg("/sprites/space/mars.jpg"),
       x: 0.8, y: 0.84, radius: m * 0.06,
       driftX: 0.00004, driftY: 0.00005,
       bobAmp: m * 0.014, bobPhase: rng() * Math.PI * 2, bobSpeed: 0.00026,
@@ -183,7 +211,7 @@ export function createBackground(w: number, h: number): BgState {
     },
   ];
 
-  return { layers, nebulae, planets, w, h };
+  return { layers, nebulae, planets, w, h, baseGrad: null };
 }
 
 // --- draw ------------------------------------------------------------------
@@ -199,9 +227,9 @@ function wrap(v: number, m: number): number {
 // Per-element parallax depth: fraction of the camera-focus shift each layer
 // follows. Far stars barely move; nebulae and planets move more, so walking
 // produces real depth instead of a dead, pinned starfield.
-const STAR_PARALLAX = [0.04, 0.08, 0.13];
-const NEBULA_PARALLAX = 0.06;
-const PLANET_PARALLAX = 0.18;
+const STAR_PARALLAX = [0.08, 0.16, 0.27];
+const NEBULA_PARALLAX = 0.12;
+const PLANET_PARALLAX = 0.32;
 
 export function drawBackground(
   ctx: CanvasRenderingContext2D,
@@ -219,12 +247,16 @@ export function drawBackground(
   const c = Math.max(0, Math.min(100, charge)) / 100; // 0..1
 
   // 1) Deep gradient base: near-black with a subtle blue->violet temperature
-  // shift across the canvas so the void is not a flat fill.
-  const base = ctx.createLinearGradient(0, 0, w, h);
-  base.addColorStop(0, "#04030a");
-  base.addColorStop(0.5, "#060415");
-  base.addColorStop(1, "#0a0518");
-  ctx.fillStyle = base;
+  // shift across the canvas so the void is not a flat fill. The gradient only
+  // depends on w/h, so cache it and rebuild only when the canvas resizes.
+  if (!bg.baseGrad) {
+    const base = ctx.createLinearGradient(0, 0, w, h);
+    base.addColorStop(0, "#04030a");
+    base.addColorStop(0.5, "#060415");
+    base.addColorStop(1, "#0a0518");
+    bg.baseGrad = base;
+  }
+  ctx.fillStyle = bg.baseGrad;
   ctx.fillRect(0, 0, w, h);
 
   // 2) Nebula clouds: large radial gradients, low alpha, slow drift + breathing.

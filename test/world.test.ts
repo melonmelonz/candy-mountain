@@ -3,7 +3,7 @@ import { createWorld, applyState, interpolateRemotes, stepSelf } from "../src/ga
 import { ROOM_CONFIG } from "../src/game/config";
 import type { PlayerWire } from "../src/protocol";
 
-const SPEED = 220;
+const SPEED = 280;
 
 function makePlayer(id: string, x: number, y: number): PlayerWire {
   return { id, name: id, x, y, facing: "south", moving: false, cosmetics: { hue: 0, visorHue: 0, flair: "antenna", sprite: 0 } };

@@ -3,6 +3,7 @@ import { createInput } from "./game/input";
 import { drawScene } from "./game/render";
 import { loadOrCreateCosmetics } from "./game/cosmetics";
 import { loadAssets } from "./game/assets";
+import { preloadPlanets } from "./game/background";
 import { ROOM_CONFIG } from "./game/config";
 import {
   WHISPERS, eggFor, pick,
@@ -165,7 +166,9 @@ function bandFor(charge: number): "none" | "low" | "mid" | "high" {
 }
 
 async function start() {
-  const assets = await loadAssets();
+  // Warm the planet photos alongside the sprite atlases so the first painted
+  // frame already has them (otherwise they streamed in ~1s late as a pop-in).
+  const [assets] = await Promise.all([loadAssets(), preloadPlanets()]);
   let last = performance.now();
   let lastSent = 0;
   function frame(now: number) {

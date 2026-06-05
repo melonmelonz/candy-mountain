@@ -63,7 +63,7 @@ export function interpolateRemotes(world: ClientWorld, alpha = 0.25) {
   }
 }
 
-const SPEED = 220; // px/sec
+const SPEED = 280; // px/sec
 
 export function stepSelf(world: ClientWorld, input: { up: boolean; down: boolean; left: boolean; right: boolean }, dt: number) {
   let dx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
