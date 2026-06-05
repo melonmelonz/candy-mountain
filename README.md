@@ -31,22 +31,31 @@ Two diegetic hints make this discoverable rather than baffling, with no HUD text
 - A one-time whisper the first time you personally cross into the far half.
 - A subtle photo-negative shimmer on any drifter standing past the seam.
 
-## Daily destinations
+## Destinations
 
-Each day the portal opens onto a different site, chosen deterministically from
-[`links.json`](./links.json) so everyone who shows up that day travels to the same
-place. To add one, see [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+Each time the portal opens it advances a cycle counter. The destination is chosen
+deterministically from [`links.json`](./links.json) by that counter, so every player
+present in the same opening travels to the same place. To add a destination, see
+[`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## Stack
 
 - **Client:** Preact + Vite + TypeScript, rendered to a single full-screen canvas.
   Movement is client-side prediction; the server only clamps reported positions.
+- **Art:** high-def parallax space background (Canvas 2D) contrasts pixel-art
+  characters and gates. Characters are a 17-entry manifest-driven roster of
+  PixelLab atlases (`public/sprites/roster/`), rendered as 8-direction sprites
+  with idle/walk/rotation-still fallback. The portal is one of 6 daily-rotating
+  PixelLab animated warpgates (`public/sprites/gates/`). All assets are stored
+  locally and fetched at build time via `scripts/fetch-sprites.ts`.
 - **Realtime room:** a Cloudflare Durable Object (`PortalRoom`) in `portal-room/`,
   hosted in a sibling Worker. It runs the 10 Hz ritual tick, broadcasts world
-  state over WebSockets, and uses WebSocket hibernation to survive eviction.
+  state (including the active gate ID and cycle index) over WebSockets, and uses
+  WebSocket hibernation to survive eviction.
 - **Persistence:** the Durable Object's SQLite storage holds a `portal_opens` log
-  (one row per opening: UTC day, timestamp, drifters present). Game state itself
-  is in-memory and ephemeral by design.
+  (one row per opening: UTC day, timestamp, drifters present). The `portal_opens`
+  count drives the cycle index for destination selection. Game state itself is
+  in-memory and ephemeral by design.
 - **Hosting:** Cloudflare Pages for the SPA, plus the sibling Worker for the DO.
 
 ## Local development
@@ -73,8 +82,10 @@ action fails on non-ASCII characters. Use `->` instead of an arrow, and so on.
 
 ## Repo layout
 
-- `src/` - the SPA: `src/game/` (world, render, reducer, config, sprites) and
-  `src/main.ts` (the frame loop).
+- `src/` - the SPA: `src/game/` (world, render, reducer, config, sprite renderer,
+  roster/gate loaders) and `src/main.ts` (the frame loop).
+- `public/sprites/` - local PixelLab atlases + manifests for the character roster
+  and animated gates. Populated by `scripts/fetch-sprites.ts` at build time.
 - `portal-room/` - the Cloudflare Worker hosting the `PortalRoom` Durable Object.
 - `links.json` - the daily destination list. `screen-names.json` - the name
   generator's word lists.

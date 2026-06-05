@@ -1,25 +1,6 @@
 // Diegetic voice of the portal: dramatic transmissions at the open moment and
 // faint whispers as the charge climbs. Dry, cosmic, a little Charlie-the-Unicorn.
 
-export const OPEN_LINES = [
-  "THE WAY IS OPEN",
-  "STEP THROUGH",
-  "IT REMEMBERS YOU",
-  "DOWN THE HOLE, TRAVELERS",
-  "SOMEWHERE NEW",
-  "TOGETHER, THEN",
-  "THE GATE EXHALES",
-];
-
-export const OPEN_SUBS = [
-  "(still no candy)",
-  "(do not look back)",
-  "(mind the gap)",
-  "(see you on the other side)",
-  "",
-  "",
-];
-
 // Whispers keyed by charge threshold. Picked once per threshold crossing.
 export const WHISPERS: Record<"low" | "mid" | "high", string[]> = {
   low: ["it stirs", "something listens", "warmer"],

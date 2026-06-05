@@ -19,10 +19,19 @@ ASCII-only (the wrangler deploy action breaks on unicode).
 
 ## Recently shipped
 
-- **Art overhaul** (`f84d931`): fixed the left/right "boxes" sprite artifact,
-  reworked the portal into an eldritch gate, refined the background, added two
-  girly drifter sheets + random multi-sprite spawn, plus a dev-only preview
-  harness.
+- **Full art overhaul** (Tasks 1-9): replaced the old monochrome drifter sprite
+  system with a manifest-driven 17-character roster of PixelLab atlases stored
+  locally under `public/sprites/` (fetched at build time via
+  `scripts/fetch-sprites.ts`). Characters render as 8-direction sprites with
+  idle/walk/rotation-still fallback; no constant bob. Replaced the procedural
+  portal with 6 daily-rotating animated PixelLab warpgates. Replaced the
+  calendar-day destination model with a per-solve "cycle" model: `cycleIndex`
+  derived from `portal_opens` count, server broadcasts active `gateId`,
+  `linkForCycle` resolves the destination. Added a guiding wisp toward the active
+  gate, cinematic camera lock during the open sequence, and a CRT-collapse
+  redirect cinematic. High-def parallax space background contrasts the pixel-art
+  foreground. Dead legacy code (drifter sheets, `dailyIndex`, `todaysLink`,
+  preview harness, `OPEN_LINES`/`OPEN_SUBS`) pruned in final cleanup pass.
 - **Inverted far side** (`6804c7f`, `bb276be`, `58a3868`): controls invert while
   a drifter stands past the seam; a one-time whisper hints at it on first
   crossing; a subtle photo-negative shimmer marks any drifter on the far side.
@@ -46,8 +55,6 @@ ASCII-only (the wrangler deploy action breaks on unicode).
 - Server-side cosmetics persistence (currently client `localStorage` only).
 - Tune full-180 inversion difficulty if playtests show the portal rarely opens
   (knob: `chargeDecayPerTick` in `src/game/config.ts`).
-- Decide whether to keep the dev-only preview harness + playwright devDependency
-  long-term, or split it out.
 
 ## Open questions
 

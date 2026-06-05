@@ -1,19 +1,6 @@
 import type { RosterManifest, GateManifest } from "./roster";
 
-// The drifter roster. Index lines up with Cosmetics.sprite. `tintable` controls
-// whether the hue palette-swap is applied: the original drifter is near-monochrome
-// so hue-tinting gives it variety, but the authored girly sheets already carry
-// their own colors, so tinting would flatten them — they render as-is.
-export interface SheetDef { src: string; tintable: boolean; }
-
-export const SHEETS: SheetDef[] = [
-  { src: "/sprites/drifter.png", tintable: true },
-  { src: "/sprites/blossom.png", tintable: false },
-  { src: "/sprites/lilac.png", tintable: false },
-];
-
 export interface Assets {
-  drifters: HTMLImageElement[]; // parallel to SHEETS
   roster: RosterManifest;
   gates: GateManifest;
   /** Every atlas PNG referenced by the roster + gate manifests, keyed by the
@@ -48,12 +35,6 @@ let cached: Promise<Assets> | null = null;
 export function loadAssets(): Promise<Assets> {
   if (!cached) {
     cached = (async () => {
-      // Legacy drifter sheets: base (index 0) must load; extras fall back to it.
-      const base = await loadImage(SHEETS[0].src);
-      const rest = await Promise.all(
-        SHEETS.slice(1).map((s) => loadImage(s.src).catch(() => base)),
-      );
-
       // Roster + gate manifests.
       const [rosterManifest, gateManifest] = await Promise.all([
         fetch("/sprites/roster/manifest.json").then(
@@ -101,7 +82,6 @@ export function loadAssets(): Promise<Assets> {
       ]);
 
       return {
-        drifters: [base, ...rest],
         roster: rosterManifest,
         gates: gateManifest,
         images,
