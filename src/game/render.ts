@@ -1,6 +1,5 @@
 import type { ClientWorld } from "./world";
 import type { Assets } from "./assets";
-import type { Cosmetics, Facing } from "./types";
 import { ROOM_CONFIG } from "./config";
 import { drawGate } from "./gate";
 import { drawCharacter, drawNegativeShimmerChar } from "./sprite";
@@ -43,41 +42,6 @@ function drawGroundShadow(ctx: CanvasRenderingContext2D, px: number, py: number,
 let bg: BgState | null = null;
 let bgW = 0, bgH = 0;
 let cam = createCamera();
-
-// Per-cosmetic flair drawn over the sprite at its screen anchor.
-function drawFlair(ctx: CanvasRenderingContext2D, c: Cosmetics, px: number, py: number, scale: number, facing: Facing, tMs: number) {
-  const half = (44 * scale);
-  const tint = `hsl(${c.visorHue} 90% 65%)`;
-  switch (c.flair) {
-    case "antenna": {
-      ctx.strokeStyle = tint; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(px, py - half); ctx.lineTo(px, py - half - 10 * scale); ctx.stroke();
-      ctx.fillStyle = tint;
-      ctx.beginPath(); ctx.arc(px, py - half - 10 * scale, 2.5 * scale, 0, Math.PI * 2); ctx.fill();
-      break;
-    }
-    case "backpack": {
-      const bx = facing === "right" ? px - half * 0.7 : facing === "left" ? px + half * 0.4 : px - 4 * scale;
-      ctx.fillStyle = tint; ctx.globalAlpha = 0.85;
-      ctx.fillRect(bx, py - 4 * scale, 8 * scale, 12 * scale);
-      ctx.globalAlpha = 1;
-      break;
-    }
-    case "trail": {
-      const a = 0.25 + 0.2 * Math.sin(tMs / 300);
-      ctx.globalAlpha = a; ctx.fillStyle = tint;
-      ctx.beginPath(); ctx.arc(px, py + half * 0.8, 6 * scale, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-      break;
-    }
-    case "emblem": {
-      ctx.fillStyle = tint; ctx.globalAlpha = 0.9;
-      ctx.beginPath(); ctx.arc(px, py, 3 * scale, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-      break;
-    }
-  }
-}
 
 const BUBBLE_MS = 6000;       // total time a spoken line lingers
 const BUBBLE_FADE_MS = 1000;  // fade window at the end
@@ -269,7 +233,6 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
     if (r.x > ROOM_CONFIG.seamX) {
       drawNegativeShimmerChar(ctx, assets, r.cosmetics.sprite, r.facing, r.moving, px, py, sx, tMs, 0.4 * intensity);
     }
-    drawFlair(ctx, r.cosmetics, px, py, scale, r.facing, tMs);
     ctx.globalAlpha = 1;
   }
 
@@ -281,7 +244,6 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   if (world.self.x > ROOM_CONFIG.seamX) {
     drawNegativeShimmerChar(ctx, assets, world.selfCosmetics.sprite, world.self.facing, world.self.moving, spx, spy, sx, tMs, 0.4);
   }
-  drawFlair(ctx, world.selfCosmetics, spx, spy, scale, world.self.facing, tMs);
   drawGuide(ctx, spx, spy, cx, cy, scale, tMs);
 
   // speech bubbles, drawn last so they sit above every drifter
