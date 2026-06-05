@@ -39,6 +39,7 @@ interface StarLayer {
   drift: number;   // px/ms horizontal parallax speed
   twinkle: boolean;
   color: string;   // "r,g,b"
+  css: string;     // precomputed "rgb(r,g,b)" so the hot loop never allocates
 }
 
 interface Nebula {
@@ -98,7 +99,7 @@ export function createBackground(w: number, h: number): BgState {
         phase: rng() * Math.PI * 2,
       });
     }
-    return { stars, drift, twinkle, color };
+    return { stars, drift, twinkle, color, css: `rgb(${color})` };
   };
 
   const layers: StarLayer[] = [
@@ -193,7 +194,10 @@ export function drawBackground(
     const breath = 1 + Math.sin(tMs * 0.00012 + n.breathPhase) * n.breathAmt;
     const r = n.radius * breath;
     const nx = wrap(n.x * w + n.driftX * tMs, w + r * 2) - r;
-    const ny = n.y * h + Math.sin(tMs * 0.00007 + n.breathPhase) * h * 0.02 + n.driftY * tMs * 0.3;
+    // wrap ny the same way nx is wrapped so the linear driftY term cannot grow
+    // unbounded and creep a nebula permanently off-screen over a long session.
+    const nyBreath = Math.sin(tMs * 0.00007 + n.breathPhase) * h * 0.02;
+    const ny = wrap(n.y * h + nyBreath + n.driftY * tMs * 0.3, h + r * 2) - r;
 
     // Charge warms the nearest nebula (index 0) toward a warmer hue and a touch
     // more alpha. Kept barely noticeable.
@@ -217,8 +221,10 @@ export function drawBackground(
   for (let li = 0; li < bg.layers.length; li++) {
     const layer = bg.layers[li];
     const shift = layer.drift * tMs * driftMul; // px
-    const col = layer.color;
     const stars = layer.stars;
+    // color is per-layer, not per-star: set fillStyle ONCE here. Only globalAlpha
+    // (twinkle) varies per star inside the loop, so the loop never allocates.
+    ctx.fillStyle = layer.css;
     for (let si = 0; si < stars.length; si++) {
       const s = stars[si];
       const x = wrap(s.x * w + shift, w);
@@ -229,7 +235,6 @@ export function drawBackground(
       }
       if (a <= 0.01) continue;
       ctx.globalAlpha = a;
-      ctx.fillStyle = `rgb(${col})`;
       // small bodies: draw as filled circles for soft, non-pixel look
       ctx.beginPath();
       ctx.arc(x, y, s.size, 0, TAU);
