@@ -42,10 +42,9 @@ export function drawGate(
   const sh = gate.cell;
 
   // Size: strong central presence with a gentle swell as charge rises.
-  const TARGET_PX = 200;
-  const drawScale = (TARGET_PX / gate.cell) * worldScale;
+  const GATE_TARGET_PX = 200;
   const swell = 1 + 0.06 * e;
-  const dw = gate.cell * drawScale * swell;
+  const dw = GATE_TARGET_PX * worldScale * swell;
   const dh = dw;
 
   // Additive violet glow behind the gate, growing brighter/wider with charge.
