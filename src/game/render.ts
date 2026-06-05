@@ -7,6 +7,32 @@ import { tintedSheet, drawDrifter } from "./sprite";
 
 const DRIFTER_SCALE = 0.6; // 88px cell -> ~53px on screen at 1x
 
+// Stable per-player phase so hover bobs are desynced between drifters.
+function phaseOf(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return (h % 1000) / 1000 * Math.PI * 2;
+}
+
+// Gentle vertical hover; crystalline drifters never quite touch the ground.
+function hoverOffset(tMs: number, phase: number, moving: boolean, sx: number): number {
+  const amp = moving ? 1.4 : 2.8;
+  const period = moving ? 220 : 900;
+  return Math.sin(tMs / period + phase) * amp * sx;
+}
+
+// Soft contact shadow grounds the floating sprite. Shrinks as the drifter rises.
+function drawGroundShadow(ctx: CanvasRenderingContext2D, px: number, py: number, scale: number, lift: number) {
+  const shrink = 1 - Math.min(0.35, Math.abs(lift) * 0.04);
+  ctx.save();
+  ctx.globalAlpha = 0.26 * shrink;
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.ellipse(px, py + 26 * scale, 26 * scale * shrink, 8 * scale * shrink, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 // Deterministic starfield so it does not swim between frames.
 const STARS = Array.from({ length: 140 }, (_, i) => {
   const r = ((i * 2654435761) >>> 0) / 0xffffffff;
@@ -158,19 +184,45 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   }
   ctx.globalAlpha = 1;
 
+  // energy streams: covered pads pour light into the portal (feeds the ritual)
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const s of world.spots) {
+    if (!s.covered) continue;
+    const sxp = s.pos.x * sx, syp = s.pos.y * sy;
+    const col = s.side === "left" ? "0,224,255" : "255,138,209";
+    const segs = 7;
+    for (let i = 0; i < segs; i++) {
+      const f = ((i / segs) + (tMs / 1400)) % 1; // travels pad(0) -> portal(1)
+      const x = sxp + (cx - sxp) * f, y = syp + (cy - syp) * f;
+      const a = Math.sin(f * Math.PI) * 0.45;
+      const rr = (2 + 3 * (1 - f)) * sx;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, rr);
+      g.addColorStop(0, `rgba(${col},${a})`);
+      g.addColorStop(1, `rgba(${col},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.restore();
+
   const scale = sx * DRIFTER_SCALE;
 
   // remote players
   for (const r of world.remotes.values()) {
+    const lift = hoverOffset(tMs, phaseOf(r.id), r.moving, sx);
     const px = r.x * sx, py = r.y * sy;
+    drawGroundShadow(ctx, px, py, scale, lift);
     const sheet = tintedSheet(assets.drifter, r.cosmetics.hue);
-    drawDrifter(ctx, sheet, r.facing, r.moving, px, py, scale, tMs);
-    drawFlair(ctx, r.cosmetics, px, py, scale, r.facing, tMs);
+    drawDrifter(ctx, sheet, r.facing, r.moving, px, py - lift, scale, tMs);
+    drawFlair(ctx, r.cosmetics, px, py - lift, scale, r.facing, tMs);
   }
 
   // self
+  const selfLift = hoverOffset(tMs, 0, world.self.moving, sx);
   const spx = world.self.x * sx, spy = world.self.y * sy;
+  drawGroundShadow(ctx, spx, spy, scale, selfLift);
   const selfSheet = tintedSheet(assets.drifter, world.selfCosmetics.hue);
-  drawDrifter(ctx, selfSheet, world.self.facing, world.self.moving, spx, spy, scale, tMs);
-  drawFlair(ctx, world.selfCosmetics, spx, spy, scale, world.self.facing, tMs);
+  drawDrifter(ctx, selfSheet, world.self.facing, world.self.moving, spx, spy - selfLift, scale, tMs);
+  drawFlair(ctx, world.selfCosmetics, spx, spy - selfLift, scale, world.self.facing, tMs);
 }
