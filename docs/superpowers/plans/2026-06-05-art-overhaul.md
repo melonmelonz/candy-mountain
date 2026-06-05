@@ -268,6 +268,114 @@ character, call `drawGuide(ctx, spx, spy, cx, cy, scale, tMs)` (using the same
 
 ---
 
+## Task 5c: Cinematic camera lock (client)
+
+(Run AFTER Task 5b so it wraps the final `render.ts` scene. Spawn is already
+constrained to the left/non-inverted side server-side.)
+
+The view starts framed on the left spawn side, then locks to the full ritual
+frame once the local drifter funnels in to the gate. A uniform zoom-about-focus
+transform that reduces to identity (the current full-arena stretch render) when
+locked, so no other draw code changes.
+
+**Files:**
+- Create: `src/game/camera.ts`
+- Modify: `src/game/render.ts` (wrap the in-world scene in the camera transform)
+
+**Contract:**
+```ts
+export interface Camera { locked: boolean; t: number; last: number; } // t: 0 spawn .. 1 ritual; last = prev tMs
+export function createCamera(): Camera; // { locked:false, t:0, last:0 }
+// Latch + ease. Call once per frame BEFORE drawing. selfX/selfY in arena coords.
+export function updateCamera(cam: Camera, selfX: number, selfY: number, tMs: number): void;
+// Push the camera transform (composes on top of the current/DPR transform).
+// Caller MUST ctx.restore() after drawing the in-world scene.
+export function pushCamera(ctx: CanvasRenderingContext2D, cam: Camera, vw: number, vh: number): void;
+```
+
+Constants (module-level in camera.ts):
+```ts
+const SPAWN_ZOOM = 1.3;          // gentle zoom on the spawn side
+const SPAWN_FOCUS_X_FRAC = 0.266; // arena focus x as a fraction of arenaWidth (~340 of 1280)
+const LOCK_DIST = 170;           // arena units: how close to the gate triggers the lock
+const LOCK_MS = 1000;            // ease-in-out duration once latched
+```
+
+**updateCamera logic:**
+```ts
+import { ROOM_CONFIG } from "./config";
+export function updateCamera(cam: Camera, selfX: number, selfY: number, tMs: number): void {
+  const dt = cam.last === 0 ? 0 : tMs - cam.last;
+  cam.last = tMs;
+  const gx = ROOM_CONFIG.seamX, gy = ROOM_CONFIG.arenaHeight / 2;
+  if (!cam.locked && Math.hypot(selfX - gx, selfY - gy) <= LOCK_DIST) cam.locked = true;
+  if (cam.locked) cam.t = Math.min(1, cam.t + dt / LOCK_MS);
+}
+```
+
+**pushCamera logic** (uniform zoom about an arena focus point, mapping that focus
+to the viewport center; eases from spawn framing to identity):
+```ts
+function easeInOut(x: number): number { return x < 0.5 ? 2*x*x : 1 - Math.pow(-2*x+2, 2)/2; }
+export function pushCamera(ctx, cam, vw, vh): void {
+  const aw = ROOM_CONFIG.arenaWidth, ah = ROOM_CONFIG.arenaHeight;
+  const sx = vw / aw, sy = vh / ah;
+  const e = easeInOut(cam.t);
+  const Z = SPAWN_ZOOM + (1 - SPAWN_ZOOM) * e;            // 1.3 -> 1.0
+  const fxArena = SPAWN_FOCUS_X_FRAC * aw + (aw / 2 - SPAWN_FOCUS_X_FRAC * aw) * e; // ->aw/2
+  const fyArena = ah / 2;                                  // vertical stays centered
+  const fsx = fxArena * sx, fsy = fyArena * sy;            // focus in (stretched) screen space
+  ctx.save();
+  ctx.translate(vw / 2, vh / 2);
+  ctx.scale(Z, Z);
+  ctx.translate(-fsx, -fsy);
+}
+```
+At `cam.t === 1`: Z=1, fxArena=aw/2 -> fsx=vw/2, fsy=vh/2, so the transform is
+`translate(vw/2,vh/2); scale(1); translate(-vw/2,-vh/2)` = identity. Confirm this
+in a test.
+
+IMPORTANT: use `ctx.translate`/`ctx.scale` (relative, composing on the existing
+transform incl. any devicePixelRatio base transform) - do NOT use `setTransform`,
+which would clobber the DPR base transform set up in main.ts.
+
+**render.ts integration:**
+- Add module-level `let cam = createCamera();` (alongside the existing `let bg`).
+- At the top of `drawScene`, after computing `sx`/`sy`, call
+  `updateCamera(cam, world.self.x, world.self.y, tMs)`.
+- Draw the high-def background FIRST, untransformed/full-screen (as now), then
+  `ctx.imageSmoothingEnabled = false;`.
+- Then `pushCamera(ctx, cam, vw, vh);` and draw the ENTIRE in-world scene (seam,
+  gate, spots, streams, characters, guide, speech bubbles) exactly as now using
+  the existing `sx`/`sy` coords. Finish with a single `ctx.restore();` to pop the
+  camera transform.
+- Do NOT put the background inside the camera transform (it stays a stable
+  full-screen cosmos backdrop).
+- `drawOpenBloom` (Task 8 redirect) is drawn by main.ts over the whole canvas and
+  must remain OUTSIDE the camera transform - leave it where it is.
+
+**Test:** `test/camera.test.ts`
+- [ ] **Step 1:** Write `test/camera.test.ts`:
+  - `updateCamera` latches `locked=true` when self is within LOCK_DIST of the gate
+    (seamX, arenaHeight/2) and stays false when far; once locked, `t` advances
+    toward 1 with successive tMs and never exceeds 1.
+  - A pure helper for the transform at `t=1` equals identity. To test without a
+    canvas, expose an internal `cameraParams(cam, vw, vh): { Z:number; fsx:number;
+    fsy:number }` (export it) and assert at `t=1`: `Z===1`, `fsx===vw/2`,
+    `fsy===vh/2`; at `t=0`: `Z===SPAWN_ZOOM` and `fsx===SPAWN_FOCUS_X_FRAC*aw*(vw/aw)`.
+    Have `pushCamera` use `cameraParams` internally so the test covers the real math.
+- [ ] **Step 2:** `bun test test/camera.test.ts` - expect FAIL.
+- [ ] **Step 3:** Implement `camera.ts` (with `cameraParams` exported and used by
+  `pushCamera`).
+- [ ] **Step 4:** `bun test test/camera.test.ts` - expect PASS.
+- [ ] **Step 5:** Wire into `render.ts` per above. `bunx tsc --noEmit` clean,
+  `bun test` full suite green. Visual check: spawn framed on left side with gate
+  near the edge; walk to the gate -> camera eases back and centers, revealing the
+  right/inverted half and both sides' spots.
+- [ ] **Step 6:** Commit "feat: cinematic camera locks to ritual frame on arrival".
+
+---
+
 ## Task 6: Server cycle-index + gate broadcast + link-by-cycle
 
 **Files:**

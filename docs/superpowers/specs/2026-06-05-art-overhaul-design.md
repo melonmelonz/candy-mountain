@@ -156,17 +156,32 @@ transmission + white flash with a smooth, coherent **CRT collapse + dive**:
 - Then `location.href` to the day's site.
 - No transmission text, no plain white engulf.
 
-### 9. Spawn away from the gate + a subtle guiding wisp
+### 9. Spawn-side funnel + guiding wisp + cinematic camera lock
 
-Drifters must not appear on top of the portal. They spawn out toward the edges
-(server rejects any roll within `MIN_PORTAL_DIST` of the gate center) so every
-arrival has a journey inward. To point the way without any HUD, each player gets
-a small, soft "tinkerbell" wisp - a faint glowing mote with a short sparkle
-trail - that floats just ahead of them in the direction of the gate. It is a
-personal nav aid: drawn only for the local player (not every remote, which would
-clutter). The wisp fades out smoothly as the player nears the gate and is gone
-once within range, so it never competes with the portal once you have arrived.
-Tasteful and subtle, on-theme with the "retro nintendo funk."
+Three-part onboarding flow so the crowd gathers before the split ritual begins:
+
+**Spawn on the non-inverted side, away from the gate.** Drifters never appear on
+top of the portal and never in the inverted (right) realm. The server constrains
+every spawn to the left half (`x < seamX - SEAM_BUFFER`) and rejects any roll
+within `MIN_PORTAL_DIST` of the gate center, so everyone starts out on the safe
+side with a journey inward.
+
+**Guiding wisp.** To point the way without any HUD, each player gets a small,
+soft "tinkerbell" wisp - a faint glowing mote with a short sparkle trail - that
+floats just ahead of them toward the gate. Personal nav aid: local player only
+(remotes would clutter). It fades out as the player nears the gate and is gone
+once within range. Subtle, on-theme with the "retro nintendo funk."
+
+**Cinematic camera lock.** Each client's view starts framed on the left spawn
+side (a gentle uniform zoom, ~1.3x, focused left-of-center, with the gate visible
+toward the edge). The moment the local drifter funnels in within `LOCK_DIST` of
+the gate, the camera smoothly eases (one-way latch, ~1s ease-in-out) back to the
+full ritual frame: zoom -> 1.0 and focus -> arena center, re-centering on the
+gate and pulling the right/inverted half and both sides' spots into view. The
+camera is a uniform zoom-about-focus transform that reduces *exactly* to the
+current full-arena stretch render when locked, so the rest of the renderer is
+unchanged. Purely cinematic and per-client; it does not restrict movement. (A
+fresh page load / next cycle resets it via redirect.)
 
 ## Architecture / file structure
 
