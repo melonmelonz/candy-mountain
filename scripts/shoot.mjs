@@ -1,7 +1,7 @@
-// Screenshot the art preview page with Playwright. Usage: node scripts/shoot.mjs <url> <out.png>
+// Screenshot the running app with Playwright. Usage: node scripts/shoot.mjs <url> <out.png>
 import { chromium } from "playwright";
 
-const url = process.argv[2] ?? "http://localhost:5173/preview.html";
+const url = process.argv[2] ?? "http://localhost:5173/";
 const out = process.argv[3] ?? "/tmp/preview.png";
 
 const browser = await chromium.launch();

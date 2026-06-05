@@ -44,29 +44,6 @@ let bg: BgState | null = null;
 let bgW = 0, bgH = 0;
 let cam = createCamera();
 
-// Cinematic "portal swallows the screen" bloom. k goes 0..1. The portal blooms
-// outward from its arena position. The caller layers transmission text, then the
-// final white engulf, on top of this.
-export function drawOpenBloom(ctx: CanvasRenderingContext2D, vw: number, vh: number, k: number) {
-  const sx = vw / ROOM_CONFIG.arenaWidth;
-  const sy = vh / ROOM_CONFIG.arenaHeight;
-  const cx = ROOM_CONFIG.seamX * sx, cy = (ROOM_CONFIG.arenaHeight / 2) * sy;
-  const diag = Math.hypot(vw, vh);
-  const ease = k * k;
-  const r = diag * (0.08 + ease * 1.15);
-  const white = Math.max(0, (k - 0.6) / 0.4);
-
-  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-  g.addColorStop(0, `rgba(255,255,255,${0.65 + 0.35 * white})`);
-  g.addColorStop(0.3, `hsla(196,100%,72%,0.6)`);
-  g.addColorStop(0.7, `hsla(272,90%,55%,0.5)`);
-  g.addColorStop(1, `hsla(272,90%,30%,0)`);
-  ctx.globalCompositeOperation = "lighter";
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, vw, vh);
-  ctx.globalCompositeOperation = "source-over";
-}
-
 // Per-cosmetic flair drawn over the sprite at its screen anchor.
 function drawFlair(ctx: CanvasRenderingContext2D, c: Cosmetics, px: number, py: number, scale: number, facing: Facing, tMs: number) {
   const half = (44 * scale);
