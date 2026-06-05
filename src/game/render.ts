@@ -65,9 +65,10 @@ function drawBackground(ctx: CanvasRenderingContext2D, vw: number, vh: number, t
   ctx.fillRect(0, 0, vw, vh);
 }
 
-// Cinematic "portal swallows the screen" open sequence. k goes 0..1.
-// The portal blooms outward from its arena position, then flashes white.
-export function drawOpenTransition(ctx: CanvasRenderingContext2D, vw: number, vh: number, k: number) {
+// Cinematic "portal swallows the screen" bloom. k goes 0..1. The portal blooms
+// outward from its arena position. The caller layers transmission text, then the
+// final white engulf, on top of this.
+export function drawOpenBloom(ctx: CanvasRenderingContext2D, vw: number, vh: number, k: number) {
   const sx = vw / ROOM_CONFIG.arenaWidth;
   const sy = vh / ROOM_CONFIG.arenaHeight;
   const cx = ROOM_CONFIG.seamX * sx, cy = (ROOM_CONFIG.arenaHeight / 2) * sy;
@@ -85,11 +86,6 @@ export function drawOpenTransition(ctx: CanvasRenderingContext2D, vw: number, vh
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, vw, vh);
   ctx.globalCompositeOperation = "source-over";
-
-  if (white > 0) {
-    ctx.fillStyle = `rgba(255,255,255,${white})`;
-    ctx.fillRect(0, 0, vw, vh);
-  }
 }
 
 // Per-cosmetic flair drawn over the sprite at its screen anchor.
