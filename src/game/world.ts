@@ -2,7 +2,7 @@ import type { Cosmetics, Facing, Spot } from "./types";
 import type { PlayerWire } from "../protocol";
 import { ROOM_CONFIG } from "./config";
 
-export interface RemotePlayer extends PlayerWire { tx: number; ty: number; bornAt: number; } // tx/ty = lerp target; bornAt = first-seen ms
+export interface RemotePlayer extends PlayerWire { tx: number; ty: number; bornAt: number; leftAt?: number; } // tx/ty = lerp target; bornAt = first-seen ms; leftAt = vanish-started ms
 
 const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 190, flair: "emblem" };
 
@@ -36,11 +36,18 @@ export function applyState(world: ClientWorld, players: PlayerWire[], spots: Spo
     const existing = world.remotes.get(p.id);
     if (existing) {
       existing.tx = p.x; existing.ty = p.y; existing.facing = p.facing; existing.moving = p.moving; existing.cosmetics = p.cosmetics;
+      existing.leftAt = undefined; // re-seen: cancel any in-flight dissolve
     } else {
       world.remotes.set(p.id, { ...p, tx: p.x, ty: p.y, bornAt: performance.now() });
     }
   }
-  for (const id of [...world.remotes.keys()]) if (!seen.has(id)) world.remotes.delete(id);
+  // mark vanished players for a dissolve, then prune once the fade completes
+  const now = performance.now();
+  for (const [id, r] of world.remotes) {
+    if (seen.has(id)) continue;
+    if (r.leftAt === undefined) r.leftAt = now;
+    else if (now - r.leftAt > 700) world.remotes.delete(id);
+  }
 }
 
 export function interpolateRemotes(world: ClientWorld, alpha = 0.25) {

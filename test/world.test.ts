@@ -76,14 +76,34 @@ describe("applyState", () => {
     expect(world.remotes.has("self")).toBe(false);
   });
 
-  it("removes remotes no longer present in the players list", () => {
+  it("marks vanished remotes for a dissolve, then prunes after the fade", () => {
     const world = createWorld();
     world.selfId = "self";
     const p = makePlayer("remote1", 100, 200);
     applyState(world, [p], [], 0);
     expect(world.remotes.has("remote1")).toBe(true);
+
+    // first absence: still present but marked for dissolve
+    applyState(world, [], [], 0);
+    const r = world.remotes.get("remote1");
+    expect(r).toBeDefined();
+    expect(r!.leftAt).toBeGreaterThan(0);
+
+    // backdate the dissolve so the fade window has elapsed, then prune
+    r!.leftAt = performance.now() - 800;
     applyState(world, [], [], 0);
     expect(world.remotes.has("remote1")).toBe(false);
+  });
+
+  it("cancels a pending dissolve when a remote is seen again", () => {
+    const world = createWorld();
+    world.selfId = "self";
+    const p = makePlayer("remote1", 100, 200);
+    applyState(world, [p], [], 0);
+    applyState(world, [], [], 0);
+    expect(world.remotes.get("remote1")!.leftAt).toBeGreaterThan(0);
+    applyState(world, [p], [], 0);
+    expect(world.remotes.get("remote1")!.leftAt).toBeUndefined();
   });
 });
 

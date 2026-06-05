@@ -213,6 +213,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
     const lift = hoverOffset(tMs, phaseOf(r.id), r.moving, sx);
     const px = r.x * sx, py = r.y * sy;
     const intro = Math.min(1, (tMs - r.bornAt) / 600); // materialize on arrival
+    const outro = r.leftAt !== undefined ? Math.min(1, (tMs - r.leftAt) / 600) : 0; // dissolve on leave
+    if (outro >= 1) continue; // fully gone, awaiting prune
+    const ring = r.cosmetics.visorHue;
     drawGroundShadow(ctx, px, py, scale, lift);
     const sheet = tintedSheet(assets.drifter, r.cosmetics.hue);
     if (intro < 1) {
@@ -220,12 +223,21 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = (1 - intro) * 0.7;
-      ctx.strokeStyle = `hsl(${r.cosmetics.visorHue} 90% 70%)`;
+      ctx.strokeStyle = `hsl(${ring} 90% 70%)`;
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(px, py - lift, 8 * scale + intro * 42 * scale, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
-      ctx.globalAlpha = intro;
+    } else if (outro > 0) {
+      // collapsing ring marks a drifter slipping back out of the void
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = (1 - outro) * 0.7;
+      ctx.strokeStyle = `hsl(${ring} 90% 70%)`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px, py - lift, 8 * scale + (1 - outro) * 42 * scale, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
     }
+    ctx.globalAlpha = Math.min(intro, 1 - outro);
     drawDrifter(ctx, sheet, r.facing, r.moving, px, py - lift, scale, tMs);
     drawFlair(ctx, r.cosmetics, px, py - lift, scale, r.facing, tMs);
     ctx.globalAlpha = 1;
