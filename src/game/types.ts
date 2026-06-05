@@ -6,7 +6,7 @@ export type Flair = "antenna" | "backpack" | "trail" | "emblem";
 export interface Vec2 { x: number; y: number; }
 
 export interface Cosmetics {
-  hue: number;       // 0..360 suit color (only applied to tintable sheets)
+  hue: number;       // 0..360 cosmetic hue (drives easter-egg confetti color)
   visorHue: number;  // 0..360 visor tint (flair, bubble, portal-kiss)
   flair: Flair;
   sprite: number;    // index into the 17-char roster (0..ROSTER_COUNT-1)

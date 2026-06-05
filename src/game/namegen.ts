@@ -46,7 +46,6 @@ export function assignName(candidates: string[], existingNames: Set<string>): st
 
 /**
  * FNV-1a hash to deterministically pick an index from a pool.
- * Mirrors the pattern used in dailypick.ts.
  */
 function hashIndex(str: string, n: number): number {
   if (n <= 1) return 0;
