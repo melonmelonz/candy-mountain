@@ -7,6 +7,15 @@ import { tintedSheet, drawDrifter } from "./sprite";
 
 const DRIFTER_SCALE = 0.6; // 88px cell -> ~53px on screen at 1x
 
+// Respect the OS "reduce motion" setting for the most movement-heavy effects
+// (hover bob, drifting motes). Tracked live so toggling it takes effect at once.
+let reduceMotion = false;
+if (typeof matchMedia !== "undefined") {
+  const mq = matchMedia("(prefers-reduced-motion: reduce)");
+  reduceMotion = mq.matches;
+  mq.addEventListener?.("change", (ev) => { reduceMotion = ev.matches; });
+}
+
 // Stable per-player phase so hover bobs are desynced between drifters.
 function phaseOf(id: string): number {
   let h = 0;
@@ -16,6 +25,7 @@ function phaseOf(id: string): number {
 
 // Gentle vertical hover; crystalline drifters never quite touch the ground.
 function hoverOffset(tMs: number, phase: number, moving: boolean, sx: number): number {
+  if (reduceMotion) return 0;
   const amp = moving ? 1.4 : 2.8;
   const period = moving ? 220 : 900;
   return Math.sin(tMs / period + phase) * amp * sx;
@@ -90,9 +100,10 @@ function drawBackground(ctx: CanvasRenderingContext2D, vw: number, vh: number, t
 
   // drifting glow motes
   ctx.globalCompositeOperation = "lighter";
+  const drift = reduceMotion ? 0 : tMs / 1000;
   for (const m of MOTES) {
-    const px = ((m.x + tMs / 1000 * m.sp) % 1) * vw;
-    const py = ((m.y + tMs / 1000 * m.sp * 0.6) % 1) * vh;
+    const px = ((m.x + drift * m.sp) % 1) * vw;
+    const py = ((m.y + drift * m.sp * 0.6) % 1) * vh;
     const a = 0.10 + 0.06 * Math.sin(tMs / 900 + m.x * 10);
     const g = ctx.createRadialGradient(px, py, 0, px, py, m.r * 6);
     g.addColorStop(0, `hsla(${m.hue},90%,70%,${a})`);
