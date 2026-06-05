@@ -3,6 +3,7 @@ import { createInput } from "./game/input";
 import { drawScene, drawOpenBloom } from "./game/render";
 import { loadOrCreateCosmetics } from "./game/cosmetics";
 import { loadAssets } from "./game/assets";
+import { ROOM_CONFIG } from "./game/config";
 import {
   OPEN_LINES, OPEN_SUBS, WHISPERS, eggFor, pick,
   drawTransmission, drawWhisper,
@@ -64,6 +65,10 @@ let opening: { url: string; start: number; fired: boolean; line: string; sub: st
 // transient whisper shown when charge crosses a threshold band
 let whisper: { text: string; start: number } | null = null;
 let lastBand: "none" | "low" | "mid" | "high" = "none";
+// First-crossing hint: fire a single whisper the first time the self drifter
+// steps from the near half into the inverted far half. Plain session state.
+let wasFarSide = false;
+let crossedOnce = false;
 
 // crystal confetti (easter eggs); each mote drifts and fades
 interface Confetti { x: number; y: number; vx: number; vy: number; life: number; hue: number }
@@ -182,6 +187,14 @@ async function start() {
       if (order[band] > order[lastBand]) whisper = { text: pick(WHISPERS[band]), start: now };
     }
     lastBand = band;
+
+    // first-crossing hint for the inverted far side
+    const farSide = world.self.x > ROOM_CONFIG.seamX;
+    if (farSide && !wasFarSide && !crossedOnce) {
+      crossedOnce = true;
+      whisper = { text: "past the seam, the world turns against you", start: now };
+    }
+    wasFarSide = farSide;
 
     drawScene(ctx, world, assets, vw, vh, now);
 
