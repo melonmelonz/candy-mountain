@@ -129,10 +129,12 @@ export function resolveDir(want: Dir8, available: Dir8[]): Dir8 | null;
 
 **Goal:** Replace the single-sheet 4-row/7-col `drawDrifter` with a manifest-driven renderer that draws character `index` (0..16), picking state + direction + frame from atlases. Remove all hue-tint logic tied to the old monochrome drifter (the authored characters carry their own color; `tintedSheet` and cosmetics.hue tinting are dropped for characters). Keep `drawNegativeShimmer` (far-side effect) but adapt it to the new atlas draw.
 
-**Frame selection rules:**
-- Idle (not moving): if char has `breathing-idle` for the resolved dir, play it at ~4 fps; else draw the rotation still for the resolved dir. NO synthetic bob.
-- Moving: if char has `walking` for the resolved dir, play it at ~10 fps; else draw the rotation still (engine drift carries the motion).
-- Direction: `resolveDir(facingToDir8(facing), state.dirs OR rotations.dirs)`.
+**Frame selection rules (state names vary per character — use allow-lists, never play attack states):**
+- `IDLE_STATES = ["breathing-idle", "animating"]` (first one present on the char wins). `MOVE_STATES = ["walking"]`.
+- All other states in the manifest (long descriptive names like `slashing-with-sharp-claws`, `casting-a-fireball`, `two-handed-downward-slash...`, `animating-2`) are ATTACK/extra states and MUST be ignored by the normal renderer — they would look wrong as idle/walk.
+- Idle (not moving): if char has an IDLE_STATES match AND that state has the resolved dir, play it at ~4 fps; else draw the rotation still for the resolved dir. NO synthetic bob.
+- Moving: if char has a MOVE_STATES match AND that state has the resolved dir, play it at ~10 fps; else fall back to the IDLE state for that dir if present, else the rotation still (engine drift carries the motion).
+- Direction resolution is two-level: first try `resolveDir(want, state.dirs)`; if the chosen state lacks any usable dir, drop to the rotation still and `resolveDir(want, rotations.dirs)`. Note: idle `animating` states often only have south/east/west (no north) — north must fall back to the rotation still.
 
 **Contract:**
 ```ts
