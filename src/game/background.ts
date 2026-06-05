@@ -57,21 +57,30 @@ interface Nebula {
 }
 
 interface Planet {
+  img: HTMLImageElement; // real photographic disk (NASA public-domain)
   x: number;       // 0..1 anchor (kept toward an edge)
   y: number;       // 0..1 anchor
-  radius: number;  // px
-  hue: number;     // primary band hue
-  hue2: number;    // contrasting band hue (stripes alternate hue..hue2)
-  sat: number;     // band saturation
-  bands: number;   // latitude band count (gas-giant striping)
-  tilt: number;    // band + ring axis tilt (radians)
-  ring: number;    // ring outer radius as a fraction of body r; 0 = no ring
-  ringInner: number; // ring inner radius as a fraction of body r
-  spotLat: number; // storm latitude as a fraction of r (0 = none)
-  spotSize: number;// storm radius as a fraction of r (0 = none)
+  radius: number;  // px disk radius on screen
   driftX: number;  // px/ms (very slow)
   driftY: number;
-  lightAngle: number; // direction of the light source (radians)
+  bobAmp: number;  // px vertical bob amplitude (gentle life)
+  bobPhase: number;
+  bobSpeed: number;// rad/ms
+  rimHue: number;  // atmosphere glow hue
+}
+
+// Planet images load once and are reused across resizes (createBackground runs
+// again on every resize). The disks are drawn clipped to a circle so the black
+// corners of full-disk JPEGs never occlude the starfield behind them.
+const planetImgCache = new Map<string, HTMLImageElement>();
+function getPlanetImg(src: string): HTMLImageElement {
+  let img = planetImgCache.get(src);
+  if (!img) {
+    img = new Image();
+    img.src = src;
+    planetImgCache.set(src, img);
+  }
+  return img;
 }
 
 export interface BgState {
@@ -146,26 +155,31 @@ export function createBackground(w: number, h: number): BgState {
   // Two planets, placed toward the canvas edges so they never crowd the central
   // gate. One large body lower-left, one smaller upper-right. Light comes from
   // roughly the gate's direction so they feel lit by the same scene.
+  // Three real planet photos, parked toward the corners so the central gate
+  // stays clear. Jupiter is the lower-left showpiece, Earth a mid body
+  // upper-right, Mars a small accent lower-right.
+  const m = Math.min(w, h);
   const planets: Planet[] = [
-    // Big amber gas giant, lower-left. Banded with a great storm spot and a
-    // tilted ring system -- the showpiece body.
     {
-      x: 0.12, y: 0.76, radius: Math.min(w, h) * 0.17,
-      hue: 32, hue2: 8, sat: 62, bands: 9, tilt: -0.32,
-      ring: 1.95, ringInner: 1.28,
-      spotLat: 0.28, spotSize: 0.22,
-      driftX: 0.00008, driftY: -0.00004,
-      lightAngle: -0.5, // up-right toward center
+      img: getPlanetImg("/sprites/space/jupiter.jpg"),
+      x: 0.1, y: 0.8, radius: m * 0.17,
+      driftX: 0.00006, driftY: -0.00003,
+      bobAmp: m * 0.01, bobPhase: rng() * Math.PI * 2, bobSpeed: 0.00018,
+      rimHue: 34,
     },
-    // Smaller ice giant, upper-right. Cool teal/blue bands, no ring, faint pole
-    // storm. Reads as a distant Neptune-like world.
     {
-      x: 0.91, y: 0.18, radius: Math.min(w, h) * 0.09,
-      hue: 198, hue2: 168, sat: 58, bands: 7, tilt: 0.5,
-      ring: 0, ringInner: 0,
-      spotLat: -0.34, spotSize: 0.16,
-      driftX: -0.00006, driftY: 0.00005,
-      lightAngle: Math.PI + 0.7, // down-left toward center
+      img: getPlanetImg("/sprites/space/earth.jpg"),
+      x: 0.89, y: 0.17, radius: m * 0.1,
+      driftX: -0.00005, driftY: 0.00004,
+      bobAmp: m * 0.012, bobPhase: rng() * Math.PI * 2, bobSpeed: 0.00022,
+      rimHue: 205,
+    },
+    {
+      img: getPlanetImg("/sprites/space/mars.png"),
+      x: 0.8, y: 0.84, radius: m * 0.06,
+      driftX: 0.00004, driftY: 0.00005,
+      bobAmp: m * 0.014, bobPhase: rng() * Math.PI * 2, bobSpeed: 0.00026,
+      rimHue: 14,
     },
   ];
 
@@ -188,50 +202,6 @@ function wrap(v: number, m: number): number {
 const STAR_PARALLAX = [0.04, 0.08, 0.13];
 const NEBULA_PARALLAX = 0.06;
 const PLANET_PARALLAX = 0.18;
-
-// Vertical foreshortening of a ring ellipse (how edge-on we view the rings).
-const RING_SQUASH = 0.34;
-
-// Draw one half of a tilted, squashed ring annulus around a planet. The ring is
-// split so the body can be painted between the two calls: "back" is the far arc
-// (occluded by the planet), "front" is the near arc (drawn over it). Banding in
-// the radial gradient suggests Cassini-style divisions.
-function drawRing(
-  ctx: CanvasRenderingContext2D,
-  px: number, py: number, r: number,
-  outerFrac: number, innerFrac: number,
-  tilt: number, hue: number, sat: number,
-  half: "back" | "front",
-): void {
-  const ro = r * outerFrac;
-  const ri = r * innerFrac;
-  ctx.save();
-  ctx.translate(px, py);
-  ctx.rotate(tilt);
-  // half-plane clip in the (rotated, un-squashed) ring frame: back = top, front
-  // = bottom. ro tall is plenty since the squashed ellipse is shorter.
-  ctx.beginPath();
-  if (half === "back") ctx.rect(-ro, -ro, ro * 2, ro);
-  else ctx.rect(-ro, 0, ro * 2, ro);
-  ctx.clip();
-  // work in circle space: a vertical squash turns circular paths/gradients into
-  // the foreshortened ring ellipse.
-  ctx.scale(1, RING_SQUASH);
-  ctx.beginPath();
-  ctx.arc(0, 0, ro, 0, TAU);
-  ctx.arc(0, 0, ri, 0, TAU);
-  ctx.clip("evenodd");
-  const g = ctx.createRadialGradient(0, 0, ri, 0, 0, ro);
-  g.addColorStop(0.0, `hsla(${hue},${sat - 18}%,60%,0)`);
-  g.addColorStop(0.12, `hsla(${hue},${sat - 18}%,62%,0.5)`);
-  g.addColorStop(0.38, `hsla(${hue},${sat - 22}%,48%,0.14)`); // division gap
-  g.addColorStop(0.52, `hsla(${hue},${sat - 14}%,64%,0.55)`);
-  g.addColorStop(0.82, `hsla(${hue},${sat - 18}%,56%,0.3)`);
-  g.addColorStop(1.0, `hsla(${hue},${sat - 18}%,56%,0)`);
-  ctx.fillStyle = g;
-  ctx.fillRect(-ro, -ro, ro * 2, ro * 2);
-  ctx.restore();
-}
 
 export function drawBackground(
   ctx: CanvasRenderingContext2D,
@@ -297,133 +267,65 @@ export function drawBackground(
     // color is per-layer, not per-star: set fillStyle ONCE here. Only globalAlpha
     // (twinkle) varies per star inside the loop, so the loop never allocates.
     ctx.fillStyle = layer.css;
+    const spike = layer.twinkle; // only the near layer gets sparkle arms
     for (let si = 0; si < stars.length; si++) {
       const s = stars[si];
-      const x = wrap(s.x * w + shift + parX * par, w);
-      const y = wrap(s.y * h + parY * par, h);
+      // snap to whole pixels so points stay crisp instead of smearing across
+      // pixel boundaries with anti-aliasing.
+      const x = Math.round(wrap(s.x * w + shift + parX * par, w));
+      const y = Math.round(wrap(s.y * h + parY * par, h));
       let a = s.bright;
       if (layer.twinkle) {
         a *= 0.55 + 0.45 * Math.sin(tMs * 0.003 + s.phase);
       }
       if (a <= 0.01) continue;
       ctx.globalAlpha = a;
-      // small bodies: draw as filled circles for soft, non-pixel look
-      ctx.beginPath();
-      ctx.arc(x, y, s.size, 0, TAU);
-      ctx.fill();
+      const d = Math.max(1, Math.round(s.size)); // crisp 1..3px square core
+      ctx.fillRect(x, y, d, d);
+      // sparkle: faint single-pixel cross arms on the brightest near stars
+      if (spike && d >= 2 && a > 0.6) {
+        ctx.globalAlpha = a * 0.4;
+        ctx.fillRect(x - 1, y, 1, d);
+        ctx.fillRect(x + d, y, 1, d);
+        ctx.fillRect(x, y - 1, d, 1);
+        ctx.fillRect(x, y + d, d, 1);
+      }
     }
   }
   ctx.globalAlpha = 1;
 
-  // 4) Planets: banded gas-giant bodies (latitude stripes following an axis
-  // tilt), a great storm spot, optional tilted ring system, terminator night
-  // shadow, and a lit atmosphere rim. Smooth gradients only.
+  // 4) Planets: real photographic disks, clipped to a circle (so the black
+  // corners of full-disk JPEGs never show), with a gentle bob + an additive
+  // atmosphere rim so they sit in the scene rather than feeling pasted on.
   for (let pi = 0; pi < bg.planets.length; pi++) {
     const p = bg.planets[pi];
-    const px = wrap(p.x * w + p.driftX * tMs + parX * PLANET_PARALLAX, w + p.radius * 4) - p.radius * 2;
-    const py = p.y * h + p.driftY * tMs + parY * PLANET_PARALLAX;
+    const img = p.img;
+    if (!img.complete || img.naturalWidth === 0) continue; // not loaded yet
     const r = p.radius;
-    const lx = Math.cos(p.lightAngle);
-    const ly = Math.sin(p.lightAngle);
+    const bob = Math.sin(tMs * p.bobSpeed + p.bobPhase) * p.bobAmp;
+    const px = wrap(p.x * w + p.driftX * tMs + parX * PLANET_PARALLAX, w + r * 4) - r * 2;
+    const py = p.y * h + p.driftY * tMs + parY * PLANET_PARALLAX + bob;
 
-    // back half of the ring (the arc passing behind the body) is drawn first so
-    // the planet then occludes it; the front arc is drawn after the body.
-    if (p.ring > 0) drawRing(ctx, px, py, r, p.ring, p.ringInner, p.tilt, p.hue, p.sat, "back");
-
-    // --- banded body: stripes drawn in a frame rotated to the planet's tilt ---
+    // the photo, fit into a 2r square and masked to the disk circle
     ctx.save();
     ctx.beginPath();
     ctx.arc(px, py, r, 0, TAU);
     ctx.clip();
-    ctx.translate(px, py);
-    ctx.rotate(p.tilt);
-    // latitude bands as a vertical linear gradient (perpendicular to the band
-    // axis). Alternating hue/light stops read as gas-giant striping.
-    const bandG = ctx.createLinearGradient(0, -r, 0, r);
-    const steps = p.bands * 2;
-    for (let b = 0; b <= steps; b++) {
-      const t = b / steps;
-      const odd = b % 2 === 0;
-      const hue = odd ? p.hue : p.hue2;
-      // bands brighten toward the equator, darken toward the poles
-      const polar = 1 - Math.abs(t - 0.5) * 0.7;
-      const light = (odd ? 52 : 38) * polar;
-      bandG.addColorStop(t, `hsl(${hue},${p.sat}%,${light}%)`);
-    }
-    ctx.fillStyle = bandG;
-    ctx.fillRect(-r, -r, r * 2, r * 2);
-
-    // great storm: an elliptical swirl sitting on one band, slightly off the
-    // central meridian, squashed to hug the latitude.
-    if (p.spotSize > 0) {
-      const sxp = r * 0.32;
-      const syp = p.spotLat * r;
-      const sr = r * p.spotSize;
-      const spotG = ctx.createRadialGradient(sxp, syp, 0, sxp, syp, sr);
-      spotG.addColorStop(0, `hsl(${p.hue2 - 8},${p.sat + 12}%,62%)`);
-      spotG.addColorStop(0.6, `hsla(${p.hue2 - 8},${p.sat + 6}%,46%,0.85)`);
-      spotG.addColorStop(1, `hsla(${p.hue2 - 8},${p.sat}%,40%,0)`);
-      ctx.save();
-      ctx.translate(sxp, syp);
-      ctx.scale(1, 0.6);
-      ctx.translate(-sxp, -syp);
-      ctx.fillStyle = spotG;
-      ctx.beginPath();
-      ctx.arc(sxp, syp, sr, 0, TAU);
-      ctx.fill();
-      ctx.restore();
-    }
+    ctx.drawImage(img, px - r, py - r, r * 2, r * 2);
     ctx.restore();
 
-    // --- spherical lighting on top of the flat bands ---
-    // lit-side highlight (additive) so the sphere reads as 3D
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(px, py, r, 0, TAU);
-    ctx.clip();
-    ctx.globalCompositeOperation = "lighter";
-    const hiG = ctx.createRadialGradient(
-      px + lx * r * 0.5, py + ly * r * 0.5, 0,
-      px + lx * r * 0.5, py + ly * r * 0.5, r * 1.1,
-    );
-    hiG.addColorStop(0, "rgba(255,250,235,0.30)");
-    hiG.addColorStop(0.5, "rgba(255,245,225,0.08)");
-    hiG.addColorStop(1, "rgba(255,245,225,0)");
-    ctx.fillStyle = hiG;
-    ctx.fillRect(px - r, py - r, r * 2, r * 2);
-    ctx.restore();
-
-    // terminator night shadow on the far (unlit) edge
-    const termG = ctx.createRadialGradient(
-      px - lx * r * 1.15, py - ly * r * 1.15, r * 0.2,
-      px - lx * r * 0.3, py - ly * r * 0.3, r * 1.6,
-    );
-    termG.addColorStop(0, "rgba(2,2,8,0.9)");
-    termG.addColorStop(0.5, "rgba(2,2,8,0.4)");
-    termG.addColorStop(1, "rgba(2,2,8,0)");
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(px, py, r, 0, TAU);
-    ctx.clip();
-    ctx.fillStyle = termG;
-    ctx.fillRect(px - r, py - r, r * 2, r * 2);
-    ctx.restore();
-
-    // atmosphere rim: a lighter arc hugging the lit edge, additive for glow.
+    // atmosphere rim: a soft additive halo hugging the limb for cohesion glow.
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    const rimG = ctx.createRadialGradient(px, py, r * 0.86, px, py, r * 1.06);
-    rimG.addColorStop(0, `hsla(${p.hue + 12},80%,70%,0)`);
-    rimG.addColorStop(0.7, `hsla(${p.hue + 12},85%,72%,0.2)`);
-    rimG.addColorStop(1, `hsla(${p.hue + 12},85%,78%,0)`);
+    const rimG = ctx.createRadialGradient(px, py, r * 0.9, px, py, r * 1.12);
+    rimG.addColorStop(0, `hsla(${p.rimHue},85%,72%,0)`);
+    rimG.addColorStop(0.6, `hsla(${p.rimHue},85%,72%,0.16)`);
+    rimG.addColorStop(1, `hsla(${p.rimHue},85%,80%,0)`);
     ctx.fillStyle = rimG;
     ctx.beginPath();
-    ctx.arc(px + lx * r * 0.12, py + ly * r * 0.12, r * 1.06, 0, TAU);
+    ctx.arc(px, py, r * 1.12, 0, TAU);
     ctx.fill();
     ctx.restore();
-
-    // front half of the ring, drawn over the body
-    if (p.ring > 0) drawRing(ctx, px, py, r, p.ring, p.ringInner, p.tilt, p.hue, p.sat, "front");
   }
 
   // restore caller's smoothing preference; render.ts will also force false after.
