@@ -8,7 +8,11 @@ export function createCamera(): Camera { return { locked: false, t: 0, last: 0, 
 // Tight enough that the gate (arena center) is never in frame from any legal
 // spawn: the closest a drifter can spawn is MIN_PORTAL_DIST from the gate, and
 // at this zoom that distance always falls outside the visible rectangle.
-const SPAWN_ZOOM = 2.5;
+// Scaled to the arena size: at this zoom a drifter sees the same slice of world
+// (and the same on-screen sprite size + walk speed) it did in the old 1280-wide
+// arena, so enlarging the arena lengthens the journey to the portal without
+// changing how the game looks or feels at spawn.
+const SPAWN_ZOOM = 3.75;
 // Arena units of gate body+glow reach. The lock fires the instant the portal's
 // edge crosses into the visible rectangle, so the zoom-out begins exactly as the
 // gate comes into view rather than after the player walks closer.

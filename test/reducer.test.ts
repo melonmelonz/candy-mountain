@@ -145,7 +145,7 @@ test("tick does not open below minimum active players", () => {
 });
 
 test("tick no-relayout: stale covered flags recomputed; charge rises then decays", () => {
-  // layoutSpots(2, ROOM_CONFIG) produces left={x:288,y:360}, right={x:992,y:360}
+  // layoutSpots(2, ...) yields one circle per side; positions derived below.
   const initialSpots = layoutSpots(2, ROOM_CONFIG);
   const L = initialSpots.find((s) => s.side === "left")!;
   const R = initialSpots.find((s) => s.side === "right")!;

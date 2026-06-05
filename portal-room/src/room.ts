@@ -12,7 +12,7 @@ const SPAWN_MARGIN = 80;
 // Drifters spawn out toward the edges, never on top of the portal, so every
 // arrival has a real journey inward before the gate even comes into view.
 // Reject any roll closer than this to the gate.
-const MIN_PORTAL_DIST = 480;
+const MIN_PORTAL_DIST = 720;
 // Everyone spawns on the non-inverted (left) side and funnels in from there;
 // keep a small buffer off the seam so nobody starts in the inverted realm.
 const SEAM_BUFFER = 40;

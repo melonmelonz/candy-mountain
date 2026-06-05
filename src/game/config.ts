@@ -19,9 +19,9 @@ export const ROSTER_COUNT = 16;
 export const GATE_COUNT = 6;
 
 export const ROOM_CONFIG: RoomConfig = {
-  arenaWidth: 1280,
-  arenaHeight: 720,
-  seamX: 640,
+  arenaWidth: 1920,
+  arenaHeight: 1080,
+  seamX: 960,
   spotRadius: 36,
   maxPerSide: 5,
   idleMs: 30_000,
