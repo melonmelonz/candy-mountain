@@ -1,12 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { facingToDir8, resolveDir, DIR_ORDER } from "../src/game/roster";
-
-describe("facingToDir8", () => {
-  test("down -> south", () => expect(facingToDir8("down")).toBe("south"));
-  test("up -> north", () => expect(facingToDir8("up")).toBe("north"));
-  test("left -> west", () => expect(facingToDir8("left")).toBe("west"));
-  test("right -> east", () => expect(facingToDir8("right")).toBe("east"));
-});
+import { resolveDir, DIR_ORDER } from "../src/game/roster";
 
 describe("resolveDir", () => {
   test("returns exact when present", () => {

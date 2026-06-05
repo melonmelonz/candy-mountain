@@ -4,7 +4,7 @@ import { ROOM_CONFIG } from "../src/game/config";
 import type { Player, RoomState, Spot } from "../src/game/types";
 
 function mk(id: string, lastInputAt: number): Player {
-  return { id, name: id, pos: { x: 0, y: 0 }, facing: "down", moving: false,
+  return { id, name: id, pos: { x: 0, y: 0 }, facing: "south", moving: false,
     cosmetics: { hue: 0, visorHue: 0, flair: "antenna", sprite: 0 }, lastInputAt };
 }
 

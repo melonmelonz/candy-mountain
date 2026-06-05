@@ -16,7 +16,10 @@ const MIN_PORTAL_DIST = 480;
 // Everyone spawns on the non-inverted (left) side and funnels in from there;
 // keep a small buffer off the seam so nobody starts in the inverted realm.
 const SEAM_BUFFER = 40;
-const FACINGS: Facing[] = ["up", "down", "left", "right"];
+const FACINGS: Facing[] = [
+  "south", "south-east", "east", "north-east",
+  "north", "north-west", "west", "south-west",
+];
 const FLAIRS: Flair[] = ["antenna", "backpack", "trail", "emblem"];
 const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 0, flair: "antenna", sprite: 0 };
 const MAX_CHAT_HISTORY = 10;
@@ -119,7 +122,7 @@ export class PortalRoom implements DurableObject {
         id: att.id,
         name: generateUniqueName(att.id, this.players),
         pos: randomSpawn(),
-        facing: "down",
+        facing: "south",
         moving: false,
         cosmetics: att.cosmetics ?? { ...DEFAULT_COSMETICS },
         lastInputAt: Date.now(),
@@ -162,7 +165,7 @@ export class PortalRoom implements DurableObject {
       id,
       name: generateUniqueName(id, this.players),
       pos: spawn,
-      facing: "down",
+      facing: "south",
       moving: false,
       cosmetics: { ...DEFAULT_COSMETICS },
       lastInputAt: Date.now(),
@@ -196,7 +199,7 @@ export class PortalRoom implements DurableObject {
         id,
         name: generateUniqueName(id, this.players),
         pos: randomSpawn(),
-        facing: "down",
+        facing: "south",
         moving: false,
         cosmetics: { ...DEFAULT_COSMETICS },
         lastInputAt: Date.now(),

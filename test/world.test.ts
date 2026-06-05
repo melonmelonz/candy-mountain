@@ -6,7 +6,7 @@ import type { PlayerWire } from "../src/protocol";
 const SPEED = 220;
 
 function makePlayer(id: string, x: number, y: number): PlayerWire {
-  return { id, name: id, x, y, facing: "down", moving: false, cosmetics: { hue: 0, visorHue: 0, flair: "antenna", sprite: 0 } };
+  return { id, name: id, x, y, facing: "south", moving: false, cosmetics: { hue: 0, visorHue: 0, flair: "antenna", sprite: 0 } };
 }
 
 describe("stepSelf", () => {
@@ -20,20 +20,20 @@ describe("stepSelf", () => {
     expect(world.self.moving).toBe(false);
   });
 
-  it("moving right increases x by SPEED*dt and sets facing=right", () => {
+  it("moving right increases x by SPEED*dt and sets facing=east", () => {
     const world = createWorld();
     const startX = world.self.x;
     stepSelf(world, { up: false, down: false, left: false, right: true }, 0.1);
     expect(world.self.x).toBeCloseTo(startX + SPEED * 0.1, 5);
-    expect(world.self.facing).toBe("right");
+    expect(world.self.facing).toBe("east");
   });
 
-  it("moving up sets facing=up", () => {
+  it("moving up sets facing=north", () => {
     const world = createWorld();
     const startY = world.self.y;
     stepSelf(world, { up: true, down: false, left: false, right: false }, 0.1);
     expect(world.self.y).toBeCloseTo(startY - SPEED * 0.1, 5);
-    expect(world.self.facing).toBe("up");
+    expect(world.self.facing).toBe("north");
   });
 
   it("diagonal (right+down) normalizes — displacement magnitude equals SPEED*dt not SPEED*dt*sqrt(2)", () => {
@@ -48,6 +48,18 @@ describe("stepSelf", () => {
     expect(dist).toBeCloseTo(SPEED * dt, 5);
   });
 
+  it("diagonal (right+down) faces south-east; (left+up) faces north-west", () => {
+    // fresh near-side worlds so neither step crosses the seam into inverted controls
+    const a = createWorld();
+    a.self.x = 100;
+    stepSelf(a, { up: false, down: true, left: false, right: true }, 0.1);
+    expect(a.self.facing).toBe("south-east");
+    const b = createWorld();
+    b.self.x = 100;
+    stepSelf(b, { up: true, down: false, left: true, right: false }, 0.1);
+    expect(b.self.facing).toBe("north-west");
+  });
+
   it("clamps to arena bounds when moving right past arenaWidth", () => {
     const world = createWorld();
     world.self.x = 100; // near side: normal controls, so right input clamps to arenaWidth
@@ -55,22 +67,22 @@ describe("stepSelf", () => {
     expect(world.self.x).toBe(ROOM_CONFIG.arenaWidth);
   });
 
-  it("on the far side of the seam, pressing right moves -x and faces left", () => {
+  it("on the far side of the seam, pressing right moves -x and faces west", () => {
     const world = createWorld();
     world.self.x = ROOM_CONFIG.seamX + 100; // far side
     const startX = world.self.x;
     stepSelf(world, { up: false, down: false, left: false, right: true }, 0.1);
     expect(world.self.x).toBeCloseTo(startX - SPEED * 0.1, 5);
-    expect(world.self.facing).toBe("left");
+    expect(world.self.facing).toBe("west");
   });
 
-  it("on the far side of the seam, pressing down moves -y and faces up", () => {
+  it("on the far side of the seam, pressing down moves -y and faces north", () => {
     const world = createWorld();
     world.self.x = ROOM_CONFIG.seamX + 100; // far side
     const startY = world.self.y;
     stepSelf(world, { up: false, down: true, left: false, right: false }, 0.1);
     expect(world.self.y).toBeCloseTo(startY - SPEED * 0.1, 5);
-    expect(world.self.facing).toBe("up");
+    expect(world.self.facing).toBe("north");
   });
 
   it("controls are normal exactly at the seam (x === seamX is not inverted)", () => {
@@ -79,7 +91,7 @@ describe("stepSelf", () => {
     const startX = world.self.x;
     stepSelf(world, { up: false, down: false, left: false, right: true }, 0.1);
     expect(world.self.x).toBeCloseTo(startX + SPEED * 0.1, 5);
-    expect(world.self.facing).toBe("right");
+    expect(world.self.facing).toBe("east");
   });
 });
 

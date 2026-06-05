@@ -1,6 +1,16 @@
 export type PlayerId = string;
 export type Side = "left" | "right";
-export type Facing = "up" | "down" | "left" | "right";
+// 8-way facing. Names match the sprite atlas directions (DIR_ORDER in roster.ts)
+// so a facing maps straight to an atlas row with no lossy cardinal collapse.
+export type Facing =
+  | "south"
+  | "south-east"
+  | "east"
+  | "north-east"
+  | "north"
+  | "north-west"
+  | "west"
+  | "south-west";
 export type Flair = "antenna" | "backpack" | "trail" | "emblem";
 
 export interface Vec2 { x: number; y: number; }

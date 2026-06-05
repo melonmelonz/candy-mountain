@@ -1,12 +1,8 @@
-export type Dir8 =
-  | "south"
-  | "south-east"
-  | "east"
-  | "north-east"
-  | "north"
-  | "north-west"
-  | "west"
-  | "south-west";
+import type { Facing } from "./types";
+
+// Dir8 and Facing are the same eight directions; Facing is the canonical type in
+// types.ts and Dir8 is kept as an alias for the roster/atlas vocabulary.
+export type Dir8 = Facing;
 
 export const DIR_ORDER: Dir8[] = [
   "south",
@@ -47,16 +43,6 @@ export interface GateDef {
 
 export interface GateManifest {
   gates: GateDef[];
-}
-
-/** Map a 4-direction wire facing to the nearest Dir8 cardinal. */
-export function facingToDir8(f: "up" | "down" | "left" | "right"): Dir8 {
-  switch (f) {
-    case "down": return "south";
-    case "up": return "north";
-    case "left": return "west";
-    case "right": return "east";
-  }
 }
 
 /**

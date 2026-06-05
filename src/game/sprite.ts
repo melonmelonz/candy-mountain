@@ -1,6 +1,6 @@
 import type { Facing } from "./types";
 import type { CharDef } from "./roster";
-import { DIR_ORDER, facingToDir8, resolveDir } from "./roster";
+import { DIR_ORDER, resolveDir } from "./roster";
 import type { Assets } from "./assets";
 
 // ---------------------------------------------------------------------------
@@ -66,7 +66,7 @@ interface ResolvedCell {
  * image loaded.
  *
  * Resolution order:
- * 1. selectState -> facingToDir8 -> resolveDir against the state atlas.
+ * 1. selectState -> resolveDir(facing) against the state atlas.
  * 2. Fallback: resolveDir against rotations.dirs (still frame, fps irrelevant).
  *
  * fps is chosen here (10 for walk, 4 for idle) so callers never need to
@@ -82,7 +82,7 @@ function resolveCell(
   const char = assets.roster.characters[charIndex];
   if (!char) return null;
 
-  const want = facingToDir8(facing);
+  const want = facing; // facing is already an atlas direction (Dir8)
   const stateName = selectState(char, moving);
   const cell = char.cell;
 

@@ -22,7 +22,7 @@ export interface ClientWorld {
 export function createWorld(): ClientWorld {
   return {
     selfId: null,
-    self: { x: ROOM_CONFIG.arenaWidth / 2, y: ROOM_CONFIG.arenaHeight / 2, facing: "down", moving: false, name: "" },
+    self: { x: ROOM_CONFIG.arenaWidth / 2, y: ROOM_CONFIG.arenaHeight / 2, facing: "south", moving: false, name: "" },
     selfCosmetics: DEFAULT_COSMETICS,
     remotes: new Map(),
     spots: [],
@@ -80,7 +80,21 @@ export function stepSelf(world: ClientWorld, input: { up: boolean; down: boolean
     dx /= len; dy /= len;
     world.self.x = Math.max(0, Math.min(ROOM_CONFIG.arenaWidth, world.self.x + dx * SPEED * dt));
     world.self.y = Math.max(0, Math.min(ROOM_CONFIG.arenaHeight, world.self.y + dy * SPEED * dt));
-    if (Math.abs(dx) > Math.abs(dy)) world.self.facing = dx > 0 ? "right" : "left";
-    else world.self.facing = dy > 0 ? "down" : "up";
+    world.self.facing = facing8(dx, dy);
   }
+}
+
+// Map a movement vector to one of the eight atlas directions. dx>0 is east,
+// dy>0 is south (screen down). Signs survive normalization, so this works on the
+// normalized vector too. Returns "south" only as a degenerate (0,0) fallback.
+function facing8(dx: number, dy: number): Facing {
+  const sx = Math.sign(dx), sy = Math.sign(dy);
+  if (sx > 0 && sy < 0) return "north-east";
+  if (sx > 0 && sy > 0) return "south-east";
+  if (sx < 0 && sy < 0) return "north-west";
+  if (sx < 0 && sy > 0) return "south-west";
+  if (sx > 0) return "east";
+  if (sx < 0) return "west";
+  if (sy < 0) return "north";
+  return "south";
 }
