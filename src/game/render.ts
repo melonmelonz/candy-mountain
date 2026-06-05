@@ -5,6 +5,7 @@ import { ROOM_CONFIG } from "./config";
 import { drawGate } from "./gate";
 import { drawCharacter, drawNegativeShimmerChar } from "./sprite";
 import { createBackground, drawBackground, type BgState } from "./background";
+import { drawGuide } from "./guide";
 
 // Drifters near the gate catch its light: a soft additive halo that grows with
 // proximity and with portal charge. cx/cy/rPortal are the portal's screen geometry.
@@ -296,6 +297,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
     drawNegativeShimmerChar(ctx, assets, world.selfCosmetics.sprite, world.self.facing, world.self.moving, spx, spy, sx, tMs, 0.4);
   }
   drawFlair(ctx, world.selfCosmetics, spx, spy, scale, world.self.facing, tMs);
+  drawGuide(ctx, spx, spy, cx, cy, scale, tMs);
 
   // speech bubbles, drawn last so they sit above every drifter
   for (const r of world.remotes.values()) {
