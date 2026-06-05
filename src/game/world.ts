@@ -2,7 +2,7 @@ import type { Cosmetics, Facing, Spot } from "./types";
 import type { PlayerWire } from "../protocol";
 import { ROOM_CONFIG } from "./config";
 
-export interface RemotePlayer extends PlayerWire { tx: number; ty: number; } // tx/ty = target for lerp
+export interface RemotePlayer extends PlayerWire { tx: number; ty: number; bornAt: number; } // tx/ty = lerp target; bornAt = first-seen ms
 
 const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 190, flair: "emblem" };
 
@@ -37,7 +37,7 @@ export function applyState(world: ClientWorld, players: PlayerWire[], spots: Spo
     if (existing) {
       existing.tx = p.x; existing.ty = p.y; existing.facing = p.facing; existing.moving = p.moving; existing.cosmetics = p.cosmetics;
     } else {
-      world.remotes.set(p.id, { ...p, tx: p.x, ty: p.y });
+      world.remotes.set(p.id, { ...p, tx: p.x, ty: p.y, bornAt: performance.now() });
     }
   }
   for (const id of [...world.remotes.keys()]) if (!seen.has(id)) world.remotes.delete(id);
