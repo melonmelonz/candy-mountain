@@ -171,13 +171,24 @@ async function start() {
   const [assets] = await Promise.all([loadAssets(), preloadPlanets()]);
   let last = performance.now();
   let lastSent = 0;
+  let lastMoveKey = "";
   function frame(now: number) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     stepSelf(world, input.state, dt);
     interpolateRemotes(world);
-    if (now - lastSent > 66) { // ~15 Hz
-      lastSent = now;
-      net.send({ t: "move", x: world.self.x, y: world.self.y, facing: world.self.facing, moving: world.self.moving });
+    // Only send a move when our state actually changed (throttled to ~15 Hz),
+    // plus a slow keepalive so a stationary-but-present drifter stays "active"
+    // for the ritual. When the tab is hidden we send nothing at all: an
+    // abandoned tab then goes idle server-side, which lets the room's tick loop
+    // stop so a forgotten session can't drain the Durable Object request quota.
+    if (!document.hidden) {
+      const key = `${Math.round(world.self.x)},${Math.round(world.self.y)},${world.self.facing},${world.self.moving}`;
+      const changed = key !== lastMoveKey;
+      if ((changed && now - lastSent > 66) || now - lastSent > 4000) {
+        lastSent = now;
+        lastMoveKey = key;
+        net.send({ t: "move", x: world.self.x, y: world.self.y, facing: world.self.facing, moving: world.self.moving });
+      }
     }
 
     setCharge(world.charge);

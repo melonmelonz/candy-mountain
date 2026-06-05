@@ -219,6 +219,9 @@ export class PortalRoom implements DurableObject {
       if (Number.isFinite(y)) p.pos.y = Math.max(0, Math.min(ROOM_CONFIG.arenaHeight, y));
       if (FACINGS.includes(msg.facing)) p.facing = msg.facing;
       p.moving = msg.moving === true;
+      // Movement resumed: make sure the tick loop is running (it stops itself
+      // when the room goes quiet, see alarm()).
+      this.ensureAlarm();
     } else if (msg.t === "chat") {
       this.handleChatMessage(id, p.name, msg.text);
     }
@@ -312,8 +315,15 @@ export class PortalRoom implements DurableObject {
         if (link) this.broadcast(encode({ t: "open", url: link.url, title: link.title }));
       }
     } finally {
-      // Keep ticking while anyone is connected, even if this tick threw.
-      if (this.state.getWebSockets().length > 0) this.ensureAlarm();
+      // Only keep the 10 Hz loop alive while something is actually changing:
+      // the ritual is charging/decaying (charge > 0) or a drifter is in motion.
+      // When the room is quiet we let the alarm stop, so a session left open does
+      // not burn through the Durable Object request budget at 10 ticks/sec
+      // forever. Any inbound move re-arms the alarm (see webSocketMessage), and a
+      // new connection re-arms it via fetch().
+      const hasSockets = this.state.getWebSockets().length > 0;
+      const busy = this.charge > 0 || Object.values(this.players).some((p) => p.moving);
+      if (hasSockets && busy) this.ensureAlarm();
     }
   }
 
