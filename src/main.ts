@@ -1,13 +1,15 @@
 import { createWorld, applyState, interpolateRemotes, stepSelf } from "./game/world";
 import { createInput } from "./game/input";
-import { drawScene, drawOpenBloom } from "./game/render";
+import { drawScene } from "./game/render";
 import { loadOrCreateCosmetics } from "./game/cosmetics";
 import { loadAssets } from "./game/assets";
 import { ROOM_CONFIG } from "./game/config";
 import {
-  OPEN_LINES, OPEN_SUBS, WHISPERS, eggFor, pick,
+  WHISPERS, eggFor, pick,
   drawTransmission, drawWhisper,
 } from "./game/flavor";
+import { drawGate } from "./game/gate";
+import { drawRedirect } from "./game/redirect";
 import { startAmbience, setCharge, playOpenSwell, playSparkle } from "./game/audio";
 import { connect } from "./net";
 
@@ -59,8 +61,9 @@ const input = createInput();
 const cosmetics = loadOrCreateCosmetics(localStorage);
 world.selfCosmetics = cosmetics;
 
-// portal-open cinematic state, with the transmission lines chosen once at fire time
-let opening: { url: string; start: number; fired: boolean; line: string; sub: string } | null = null;
+// portal-open cinematic state
+const REDIRECT_DURATION = 1400; // ms; sits in the 1200-1600 target range
+let opening: { url: string; start: number; fired: boolean } | null = null;
 
 // transient whisper shown when charge crosses a threshold band
 let whisper: { text: string; start: number } | null = null;
@@ -98,7 +101,7 @@ const net = connect({
   onState: (msg) => applyState(world, msg.players, msg.spots, msg.charge, msg.gateId),
   onOpen: (url) => {
     if (!opening) {
-      opening = { url, start: performance.now(), fired: false, line: pick(OPEN_LINES), sub: pick(OPEN_SUBS) };
+      opening = { url, start: performance.now(), fired: false };
       playOpenSwell();
     }
   },
@@ -229,23 +232,15 @@ async function start() {
       if (age > 2.4) egg = null;
     }
 
-    // portal-open cinematic: bloom -> transmission -> white engulf -> navigate
+    // portal-open cinematic: CRT collapse -> dive -> navigate
     if (opening) {
-      const k = Math.min(1, (now - opening.start) / 1800);
-      drawOpenBloom(ctx, vw, vh, k);
-      // transmission visible through the middle of the bloom
-      const ta = k < 0.2 ? k / 0.2 : k > 0.8 ? Math.max(0, 1 - (k - 0.8) / 0.2) : 1;
-      drawTransmission(ctx, vw, vh, opening.line, opening.sub, ta, now);
-      // final white engulf rides the back half
-      const white = Math.max(0, (k - 0.6) / 0.4);
-      if (white > 0) {
-        ctx.save();
-        ctx.globalAlpha = white;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, vw, vh);
-        ctx.restore();
-      }
-      if (k >= 1 && !opening.fired) { opening.fired = true; location.href = opening.url; }
+      const p = Math.min(1, (now - opening.start) / REDIRECT_DURATION);
+      const sxScale = vw / ROOM_CONFIG.arenaWidth;
+      const cx = ROOM_CONFIG.seamX * sxScale;
+      const cy = (ROOM_CONFIG.arenaHeight / 2) * (vh / ROOM_CONFIG.arenaHeight);
+      const gateDraw = () => drawGate(ctx, assets, world.gateId, cx, cy, sxScale, 100, now);
+      drawRedirect(ctx, vw, vh, p, gateDraw);
+      if (p >= 1 && !opening.fired) { opening.fired = true; location.href = opening.url; }
     }
 
     requestAnimationFrame(frame);
