@@ -147,6 +147,12 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   // layers below rely on nearest-neighbor, so force it back off here.
   ctx.imageSmoothingEnabled = false;
 
+  // Until the server welcome places us at our real spawn, world.self still sits
+  // at the arena center (the gate). Drawing the foreground now would flash the
+  // drifter standing on the portal for a frame before snapping to the spawn, so
+  // show only the cosmos until the spawn arrives.
+  if (!world.selfId) return;
+
   // Cinematic camera: starts framed on the spawn side, locks to the full ritual
   // frame (identity) once the local drifter funnels into the gate. Background
   // stays outside this transform (stable full-screen cosmos).
