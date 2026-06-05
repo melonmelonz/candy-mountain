@@ -63,6 +63,18 @@ export class PortalRoom implements DurableObject {
   private lastChatAt = new Map<PlayerId, number>();
 
   constructor(private state: DurableObjectState, private env: Env) {
+    // Durable, SQLite-backed log of every portal opening. Survives hibernation
+    // eviction and DO restarts (unlike the in-memory game state below). Each row
+    // records the UTC day, the wall-clock time of the open, and how many drifters
+    // were present at the moment it opened.
+    this.state.storage.sql.exec(
+      `CREATE TABLE IF NOT EXISTS portal_opens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        day_id TEXT NOT NULL,
+        opened_at INTEGER NOT NULL,
+        present INTEGER NOT NULL
+      )`,
+    );
     // In-memory state is lost on hibernation eviction; getWebSockets() is the
     // source of truth. Re-adopt surviving sockets AND rebuild their player
     // records so reconnected players are not permanently ghosted. Position is
@@ -244,6 +256,12 @@ export class PortalRoom implements DurableObject {
       );
 
       if (result.opened) {
+        this.state.storage.sql.exec(
+          "INSERT INTO portal_opens (day_id, opened_at, present) VALUES (?, ?, ?)",
+          dayId,
+          now,
+          Object.keys(this.players).length,
+        );
         const link = todaysLink(dayId);
         if (link) this.broadcast(encode({ t: "open", url: link.url, title: link.title }));
       }
