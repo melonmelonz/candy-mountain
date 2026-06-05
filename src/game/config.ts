@@ -10,10 +10,13 @@ export interface RoomConfig {
   minActiveToOpen: number;
 }
 
-// How many drifter sprite sheets exist in the roster (see assets.ts). Shared by
+// How many characters exist in the 17-char roster (see assets.ts). Shared by
 // the client (random spawn) and the server (cosmetics sanitization) so an
 // out-of-range index from a client can be clamped authoritatively.
-export const SPRITE_SHEET_COUNT = 3;
+export const ROSTER_COUNT = 17;
+
+// How many daily-rotating warpgates exist (see gatepick.ts).
+export const GATE_COUNT = 6;
 
 export const ROOM_CONFIG: RoomConfig = {
   arenaWidth: 1280,

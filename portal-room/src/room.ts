@@ -1,9 +1,10 @@
 import type { Env } from "./index";
 import type { Player, PlayerId, RoomState, Cosmetics, Facing, Flair } from "../../src/game/types";
-import { ROOM_CONFIG, SPRITE_SHEET_COUNT } from "../../src/game/config";
+import { ROOM_CONFIG, ROSTER_COUNT } from "../../src/game/config";
+import { gateForCycle } from "../../src/game/gatepick";
 import { tick } from "../../src/game/reducer";
 import { encode, decode, sanitizeChatText, type ClientMsg, type PlayerWire, type ServerMsg, type ChatMessage } from "../../src/protocol";
-import { todaysLink } from "./links";
+import { linkForCycle } from "./links";
 import { generateCandidates, assignName } from "../../src/game/namegen";
 
 const TICK_MS = 100; // 10 Hz
@@ -56,7 +57,7 @@ function sanitizeCosmetics(raw: unknown): Cosmetics {
     typeof c.visorHue === "number" && Number.isFinite(c.visorHue) ? (((c.visorHue % 360) + 360) % 360) : 0;
   const flair = FLAIRS.includes(c.flair as Flair) ? (c.flair as Flair) : "antenna";
   const sprite =
-    typeof c.sprite === "number" && Number.isInteger(c.sprite) && c.sprite >= 0 && c.sprite < SPRITE_SHEET_COUNT
+    typeof c.sprite === "number" && Number.isInteger(c.sprite) && c.sprite >= 0 && c.sprite < ROSTER_COUNT
       ? c.sprite
       : 0;
   return { hue, visorHue, flair, sprite };
@@ -78,6 +79,10 @@ export class PortalRoom implements DurableObject {
   private alarmSet = false;
   private chatHistory: ChatMessage[] = [];
   private lastChatAt = new Map<PlayerId, number>();
+  // Number of times the crowd has solved the portal. One solve = one "day".
+  // Drives which gate is drawn and which site the redirect uses. Initialized
+  // from the durable portal_opens row count in the constructor.
+  private cycleIndex = 0;
 
   constructor(private state: DurableObjectState, private env: Env) {
     // Durable, SQLite-backed log of every portal opening. Survives hibernation
@@ -92,6 +97,10 @@ export class PortalRoom implements DurableObject {
         present INTEGER NOT NULL
       )`,
     );
+    // The cycle index is the count of past openings (the first real READ of the
+    // portal_opens table). Survives hibernation/restart so the gate+site advance
+    // monotonically across the lifetime of the room.
+    this.cycleIndex = this.countOpens();
     // In-memory state is lost on hibernation eviction; getWebSockets() is the
     // source of truth. Re-adopt surviving sockets AND rebuild their player
     // records so reconnected players are not permanently ghosted. Position is
@@ -114,6 +123,16 @@ export class PortalRoom implements DurableObject {
     // If sockets survived but reconstruction was triggered by a message/close
     // (not the alarm), the tick loop must be restarted.
     if (this.state.getWebSockets().length > 0) this.ensureAlarm();
+  }
+
+  private countOpens(): number {
+    const cursor = this.state.storage.sql.exec("SELECT COUNT(*) AS n FROM portal_opens");
+    const row = cursor.one() as { n: number };
+    return Number(row.n) || 0;
+  }
+
+  private activeGateId(): string {
+    return gateForCycle(this.cycleIndex);
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -143,7 +162,7 @@ export class PortalRoom implements DurableObject {
       cosmetics: { ...DEFAULT_COSMETICS },
       lastInputAt: Date.now(),
     };
-    server.send(encode({ t: "welcome", id, spawn, dayId } satisfies ServerMsg));
+    server.send(encode({ t: "welcome", id, spawn, dayId, gateId: this.activeGateId() } satisfies ServerMsg));
     if (this.chatHistory.length > 0) {
       server.send(encode({ t: "history", messages: this.chatHistory } satisfies ServerMsg));
     }
@@ -269,17 +288,19 @@ export class PortalRoom implements DurableObject {
         cosmetics: p.cosmetics,
       }));
       this.broadcast(
-        encode({ t: "state", players: playersWire, spots: this.spots, charge: this.charge }),
+        encode({ t: "state", players: playersWire, spots: this.spots, charge: this.charge, gateId: this.activeGateId() }),
       );
 
       if (result.opened) {
+        const solvedIndex = this.cycleIndex;
         this.state.storage.sql.exec(
           "INSERT INTO portal_opens (day_id, opened_at, present) VALUES (?, ?, ?)",
           dayId,
           now,
           Object.keys(this.players).length,
         );
-        const link = todaysLink(dayId);
+        this.cycleIndex++;
+        const link = linkForCycle(solvedIndex);
         if (link) this.broadcast(encode({ t: "open", url: link.url, title: link.title }));
       }
     } finally {

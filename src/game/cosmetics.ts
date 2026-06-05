@@ -1,5 +1,5 @@
 import type { Cosmetics, Flair } from "./types";
-import { SPRITE_SHEET_COUNT } from "./config";
+import { ROSTER_COUNT } from "./config";
 
 const FLAIRS: Flair[] = ["antenna", "backpack", "trail", "emblem"];
 const KEY = "cm:cosmetics:v1";
@@ -9,7 +9,7 @@ export function rollCosmetics(rng: () => number = Math.random): Cosmetics {
     hue: Math.floor(rng() * 360),
     visorHue: Math.floor(rng() * 360),
     flair: FLAIRS[Math.floor(rng() * FLAIRS.length)],
-    sprite: Math.floor(rng() * SPRITE_SHEET_COUNT),
+    sprite: Math.floor(rng() * ROSTER_COUNT),
   };
 }
 
@@ -21,7 +21,7 @@ export function loadOrCreateCosmetics(storage: Storage, rng: () => number = Math
       // Patch identities saved before `sprite` existed so returning players keep
       // their color/flair but still get a (stable, persisted) sprite.
       if (typeof c.sprite !== "number") {
-        c.sprite = Math.floor(rng() * SPRITE_SHEET_COUNT);
+        c.sprite = Math.floor(rng() * ROSTER_COUNT);
         storage.setItem(KEY, JSON.stringify(c));
       }
       return c as Cosmetics;

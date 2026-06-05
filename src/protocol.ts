@@ -26,8 +26,8 @@ export type ClientMsg =
 
 // server -> client
 export type ServerMsg =
-  | { t: "welcome"; id: PlayerId; spawn: { x: number; y: number }; dayId: string }
-  | { t: "state"; players: PlayerWire[]; spots: Spot[]; charge: number }
+  | { t: "welcome"; id: PlayerId; spawn: { x: number; y: number }; dayId: string; gateId: string }
+  | { t: "state"; players: PlayerWire[]; spots: Spot[]; charge: number; gateId: string }
   | { t: "open"; url: string; title: string }
   | { t: "chat"; msg: ChatMessage }
   | { t: "history"; messages: ChatMessage[] };

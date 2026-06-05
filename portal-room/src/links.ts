@@ -8,3 +8,10 @@ export function todaysLink(dayId: string): Link | undefined {
   if (list.length === 0) return undefined;
   return list[dailyIndex(dayId, list.length)];
 }
+
+export function linkForCycle(index: number): Link | undefined {
+  const list = links as Link[];
+  if (list.length === 0) return undefined;
+  const n = list.length;
+  return list[((index % n) + n) % n];
+}
