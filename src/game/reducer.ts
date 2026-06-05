@@ -11,22 +11,33 @@ export function activePlayerIds(
     .map((p) => p.id);
 }
 
-export function desiredSpotsPerSide(activeCount: number, cfg: RoomConfig): number {
+// Total circles to lay out: one per active drifter so everyone has a spot,
+// capped so a huge crowd cannot tile the whole arena. Odd totals are fine; the
+// split (see layoutSpots) just gives one side the extra circle.
+export function desiredSpotCount(activeCount: number, cfg: RoomConfig): number {
   if (activeCount < cfg.minActiveToOpen) return 0;
-  return Math.min(Math.floor(activeCount / 2), cfg.maxPerSide);
+  return Math.min(activeCount, cfg.maxPerSide * 2);
 }
 
-export function layoutSpots(perSide: number, cfg: RoomConfig): Spot[] {
-  if (perSide <= 0) return [];
+// Lay out `total` circles split across the two halves of the seam. The seam
+// split is core, so an odd total puts the extra circle on the left
+// (ceil left / floor right). Each side stacks its circles vertically.
+export function layoutSpots(total: number, cfg: RoomConfig): Spot[] {
+  if (total <= 0) return [];
   const spots: Spot[] = [];
   const marginY = cfg.arenaHeight * 0.18;
   const usableH = cfg.arenaHeight - marginY * 2;
   const leftX = cfg.seamX * 0.45;
   const rightX = cfg.seamX + (cfg.arenaWidth - cfg.seamX) * 0.55;
+  const counts: Record<Side, number> = {
+    left: Math.ceil(total / 2),
+    right: Math.floor(total / 2),
+  };
   for (const side of ["left", "right"] as Side[]) {
     const x = side === "left" ? leftX : rightX;
-    for (let i = 0; i < perSide; i++) {
-      const t = perSide === 1 ? 0.5 : i / (perSide - 1);
+    const count = counts[side];
+    for (let i = 0; i < count; i++) {
+      const t = count === 1 ? 0.5 : i / (count - 1);
       const y = marginY + usableH * t;
       spots.push({ id: `${side}-${i}`, side, pos: { x, y }, covered: false });
     }
@@ -69,12 +80,12 @@ export interface TickResult {
 
 export function tick(state: RoomState, now: number, cfg: RoomConfig): TickResult {
   const active = activePlayerIds(state.players, now, cfg);
-  const perSide = desiredSpotsPerSide(active.length, cfg);
+  const desired = desiredSpotCount(active.length, cfg);
 
-  // Relayout only when the spot count changes (keeps positions stable otherwise).
-  // Left-count alone is sufficient: layoutSpots always produces symmetric (equal left/right) counts.
-  const currentPerSide = state.spots.filter((s) => s.side === "left").length;
-  let spots = perSide === currentPerSide ? state.spots : layoutSpots(perSide, cfg);
+  // Relayout only when the total spot count changes (keeps positions stable
+  // otherwise). Total uniquely determines the layout, so comparing the count is
+  // sufficient to detect a needed relayout.
+  let spots = desired === state.spots.length ? state.spots : layoutSpots(desired, cfg);
 
   // computeCoverage rewrites every covered flag from scratch, so any stale flags on reused spots are overwritten here.
   spots = computeCoverage(spots, state.players, active, cfg);

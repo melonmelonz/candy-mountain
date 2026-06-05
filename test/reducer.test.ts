@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { activePlayerIds, desiredSpotsPerSide, layoutSpots, computeCoverage, allCovered, stepCharge, tick } from "../src/game/reducer";
+import { activePlayerIds, desiredSpotCount, layoutSpots, computeCoverage, allCovered, stepCharge, tick } from "../src/game/reducer";
 import { ROOM_CONFIG } from "../src/game/config";
 import type { Player, RoomState, Spot } from "../src/game/types";
 
@@ -15,15 +15,15 @@ test("idle players are excluded from active set", () => {
   expect(active.sort()).toEqual(["a", "b"]);
 });
 
-test("spots per side scale with active count and clamp", () => {
-  expect(desiredSpotsPerSide(1, ROOM_CONFIG)).toBe(0); // below minimum
-  expect(desiredSpotsPerSide(2, ROOM_CONFIG)).toBe(1);
-  expect(desiredSpotsPerSide(7, ROOM_CONFIG)).toBe(3);
-  expect(desiredSpotsPerSide(50, ROOM_CONFIG)).toBe(5); // clamped to maxPerSide
+test("one circle per active player, clamped to total cap", () => {
+  expect(desiredSpotCount(1, ROOM_CONFIG)).toBe(0); // below minimum
+  expect(desiredSpotCount(2, ROOM_CONFIG)).toBe(2);
+  expect(desiredSpotCount(7, ROOM_CONFIG)).toBe(7); // odd total allowed
+  expect(desiredSpotCount(50, ROOM_CONFIG)).toBe(10); // clamped to maxPerSide*2
 });
 
-test("layoutSpots places equal spots per side, left of/right of seam", () => {
-  const spots = layoutSpots(2, ROOM_CONFIG);
+test("layoutSpots splits total across the seam, left of/right of seam", () => {
+  const spots = layoutSpots(4, ROOM_CONFIG);
   expect(spots.length).toBe(4);
   const left = spots.filter((s) => s.side === "left");
   const right = spots.filter((s) => s.side === "right");
@@ -34,11 +34,18 @@ test("layoutSpots places equal spots per side, left of/right of seam", () => {
   expect(spots.every((s) => s.covered === false)).toBe(true);
 });
 
+test("odd total puts the extra circle on the left", () => {
+  const spots = layoutSpots(3, ROOM_CONFIG);
+  expect(spots.length).toBe(3);
+  expect(spots.filter((s) => s.side === "left").length).toBe(2);
+  expect(spots.filter((s) => s.side === "right").length).toBe(1);
+});
+
 test("layoutSpots is deterministic", () => {
   expect(layoutSpots(3, ROOM_CONFIG)).toEqual(layoutSpots(3, ROOM_CONFIG));
 });
 
-test("layoutSpots with 0 per side is empty", () => {
+test("layoutSpots with 0 total is empty", () => {
   expect(layoutSpots(0, ROOM_CONFIG)).toEqual([]);
 });
 
@@ -111,7 +118,7 @@ test("charge rises when all covered, decays otherwise, clamped 0..100", () => {
 test("tick relayouts spots when active count changes and opens at full charge", () => {
   const cfg = { ...ROOM_CONFIG, chargeRisePerTick: 100 }; // open in one tick when covered
   const base = { players: {}, spots: [], charge: 0, dayId: "2026-06-04" } as RoomState;
-  const spots = layoutSpots(1, cfg);
+  const spots = layoutSpots(2, cfg); // 2 active players -> 1 circle per side
   const L = spots.find((s) => s.side === "left")!;
   const R = spots.find((s) => s.side === "right")!;
   const now = 1000;
@@ -138,8 +145,8 @@ test("tick does not open below minimum active players", () => {
 });
 
 test("tick no-relayout: stale covered flags recomputed; charge rises then decays", () => {
-  // layoutSpots(1, ROOM_CONFIG) produces left={x:288,y:360}, right={x:992,y:360}
-  const initialSpots = layoutSpots(1, ROOM_CONFIG);
+  // layoutSpots(2, ROOM_CONFIG) produces left={x:288,y:360}, right={x:992,y:360}
+  const initialSpots = layoutSpots(2, ROOM_CONFIG);
   const L = initialSpots.find((s) => s.side === "left")!;
   const R = initialSpots.find((s) => s.side === "right")!;
   const now = 5_000;
