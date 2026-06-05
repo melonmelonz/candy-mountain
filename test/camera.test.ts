@@ -37,9 +37,26 @@ test("cameraParams at t=1 is identity-equivalent", () => {
   expect(p.fsy).toBe(360);
 });
 
-test("cameraParams at t=0 is the spawn framing", () => {
+test("cameraParams at t=0 frames tightly on the player", () => {
   const cam = createCamera();
+  updateCamera(cam, 300, 200, 16); // local drifter's arena position
   const p = cameraParams(cam, 1280, 720);
-  expect(p.Z).toBeCloseTo(1.3);
-  expect(p.fsx).toBeCloseTo(0.266 * 1280);
+  expect(p.Z).toBeCloseTo(2.5);
+  expect(p.fsx).toBeCloseTo(300);
+  expect(p.fsy).toBeCloseTo(200);
+});
+
+test("the gate is outside the spawn viewport for the worst-case legal spawn", () => {
+  // Closest a drifter can spawn while staying MIN_PORTAL_DIST=320 from the gate
+  // and balancing both axes: arena (361,203). The gate sits at arena center.
+  const cam = createCamera();
+  updateCamera(cam, 361, 203, 16);
+  const vw = 1280, vh = 720;
+  const p = cameraParams(cam, vw, vh);
+  const gx = ROOM_CONFIG.seamX, gy = ROOM_CONFIG.arenaHeight / 2;
+  // Gate position in screen space under the camera transform.
+  const screenX = vw / 2 + (gx * (vw / ROOM_CONFIG.arenaWidth) - p.fsx) * p.Z;
+  const screenY = vh / 2 + (gy * (vh / ROOM_CONFIG.arenaHeight) - p.fsy) * p.Z;
+  const offscreen = screenX < 0 || screenX > vw || screenY < 0 || screenY > vh;
+  expect(offscreen).toBe(true);
 });
