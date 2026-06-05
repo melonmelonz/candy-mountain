@@ -156,6 +156,18 @@ transmission + white flash with a smooth, coherent **CRT collapse + dive**:
 - Then `location.href` to the day's site.
 - No transmission text, no plain white engulf.
 
+### 9. Spawn away from the gate + a subtle guiding wisp
+
+Drifters must not appear on top of the portal. They spawn out toward the edges
+(server rejects any roll within `MIN_PORTAL_DIST` of the gate center) so every
+arrival has a journey inward. To point the way without any HUD, each player gets
+a small, soft "tinkerbell" wisp - a faint glowing mote with a short sparkle
+trail - that floats just ahead of them in the direction of the gate. It is a
+personal nav aid: drawn only for the local player (not every remote, which would
+clutter). The wisp fades out smoothly as the player nears the gate and is gone
+once within range, so it never competes with the portal once you have arrived.
+Tasteful and subtle, on-theme with the "retro nintendo funk."
+
 ## Architecture / file structure
 
 New:

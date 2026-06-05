@@ -216,6 +216,58 @@ export function drawGate(
 
 ---
 
+## Task 5b: Guiding wisp toward the gate (client)
+
+(Spawn-away-from-gate is already done server-side: `MIN_PORTAL_DIST` reject in
+`portal-room/src/room.ts` `randomSpawn`. This task is the client nav aid only.
+Run AFTER Task 5 so it sits on top of the rewritten `render.ts`.)
+
+**Files:**
+- Create: `src/game/guide.ts`
+- Modify: `src/game/render.ts` (call it for the self player)
+
+**Contract:**
+```ts
+export function drawGuide(
+  ctx: CanvasRenderingContext2D,
+  px: number, py: number,   // self player screen position
+  cx: number, cy: number,   // gate screen position
+  scale: number, tMs: number,
+): void;
+```
+
+Behavior:
+- Compute the vector from the player to the gate; let `d` be the distance.
+- Fade band: full strength when far, ramping to 0 as `d` shrinks. Use two screen-
+  space thresholds, e.g. `FADE_NEAR = 140 * scale` (fully gone) and
+  `FADE_FAR = 360 * scale` (full strength); `alpha = clamp((d - FADE_NEAR) /
+  (FADE_FAR - FADE_NEAR), 0, 1)`. If `alpha <= 0`, draw nothing and return.
+- Draw a small soft wisp: a glowing mote placed a short offset ahead of the
+  player toward the gate (e.g. `offset = 26 * scale` along the unit direction),
+  with a gentle bob/orbit (sin over tMs) perpendicular to the direction so it
+  flickers like tinkerbell. Use additive (`globalCompositeOperation = "lighter"`)
+  for the glow; a warm-cool palette is fine (cyan/white core). All alphas scaled
+  by the fade `alpha`.
+- Add 2-3 trailing sparkles behind the mote (smaller, lower alpha, lagging phase)
+  to read as a short trail. No per-frame array allocation in a hot loop is
+  required here (only one player), but keep it cheap.
+- Pixel-art layers around it use nearest-neighbor; the wisp is a glow, so it can
+  draw with default smoothing - just save/restore ctx state and reset
+  `globalCompositeOperation`/`globalAlpha` when done.
+- Self only. Do not draw for remotes.
+
+**render.ts integration:** in the self-draw block, after drawing the self
+character, call `drawGuide(ctx, spx, spy, cx, cy, scale, tMs)` (using the same
+`cx`/`cy` gate center and `scale` already computed there).
+
+- [ ] **Step 1:** Implement `guide.ts` per contract.
+- [ ] **Step 2:** Wire the single call into `render.ts` self block. `bunx tsc
+  --noEmit` clean. Visual check: spawn far -> wisp points to gate, bobs; walk in
+  -> wisp fades and vanishes near the gate; no wisp on remotes.
+- [ ] **Step 3:** Commit "feat: guiding wisp leads each drifter to the gate".
+
+---
+
 ## Task 6: Server cycle-index + gate broadcast + link-by-cycle
 
 **Files:**
