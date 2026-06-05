@@ -1,5 +1,104 @@
 [
-  { "url": "https://stars.chromeexperiments.com/", "title": "100,000 Stars", "blurb": "Fly through a map of nearby stars.", "addedBy": "penn" },
-  { "url": "https://neal.fun/deep-sea/", "title": "The Deep Sea", "blurb": "Scroll to the bottom of the ocean.", "addedBy": "penn" },
-  { "url": "https://www.windy.com/", "title": "Windy", "blurb": "Hypnotic live wind map of the whole planet.", "addedBy": "penn" }
+  {
+    "url": "https://stars.chromeexperiments.com/",
+    "title": "100,000 Stars",
+    "blurb": "Fly through a map of nearby stars.",
+    "addedBy": "penn"
+  },
+  {
+    "url": "https://neal.fun/deep-sea/",
+    "title": "The Deep Sea",
+    "blurb": "Scroll to the bottom of the ocean.",
+    "addedBy": "penn"
+  },
+  {
+    "url": "https://www.windy.com/",
+    "title": "Windy",
+    "blurb": "Hypnotic live wind map of the whole planet.",
+    "addedBy": "penn"
+  },
+  {
+    "url": "https://theuselessweb.com/",
+    "title": "The Useless Web",
+    "blurb": "Jump to random weird and pointless websites.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://zzz.zoomquilt.org/",
+    "title": "Zoomquilt",
+    "blurb": "Endless surreal zooming artwork that never stops.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://patatap.com/",
+    "title": "Patatap",
+    "blurb": "Create music and visuals with keyboard taps.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://findtheinvisiblecow.com",
+    "title": "Find the Invisible Cow",
+    "blurb": "Use sound cues to locate an invisible cow.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://radio.garden",
+    "title": "Radio Garden",
+    "blurb": "Spin the globe and listen to live radio worldwide.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://thisissand.com/",
+    "title": "This Is Sand",
+    "blurb": "Create relaxing sand art with flowing colors.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://unhearit.com/",
+    "title": "Unhearit",
+    "blurb": "Replace a stuck song in your head with another.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://justflipacoin.com/",
+    "title": "Just Flip a Coin",
+    "blurb": "Flip a virtual coin for quick decisions.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://earth.nullschool.net",
+    "title": "Earth Wind Map",
+    "blurb": "Visualize real-time global wind and weather patterns.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://experiments.withgoogle.com/collection/chrome",
+    "title": "Chrome Experiments",
+    "blurb": "Explore creative web experiments built with modern tech.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://plushyplayground.org/",
+    "title": "Plushy Playground",
+    "blurb": "Interactive playful world with quirky plush characters.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://slowroads.io/",
+    "title": "Slow Roads",
+    "blurb": "Endless relaxing driving through scenic landscapes.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://thetruesize.com",
+    "title": "The True Size Of",
+    "blurb": "Compare the real size of countries on a world map.",
+    "addedBy": "summer"
+  },
+  {
+    "url": "https://howmanypeopleareinspacerightnow.com",
+    "title": "People in Space",
+    "blurb": "See how many people are currently in space.",
+    "addedBy": "summer"
+  }
 ]

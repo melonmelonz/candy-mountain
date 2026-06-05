@@ -2,13 +2,16 @@ import type { Cosmetics, Facing, Spot } from "./types";
 import type { PlayerWire } from "../protocol";
 import { ROOM_CONFIG } from "./config";
 
-export interface RemotePlayer extends PlayerWire { tx: number; ty: number; bornAt: number; leftAt?: number; } // tx/ty = lerp target; bornAt = first-seen ms; leftAt = vanish-started ms
+// A transient spoken line shown as a bubble above the drifter.
+export interface ChatBubble { text: string; at: number; }
+
+export interface RemotePlayer extends PlayerWire { tx: number; ty: number; bornAt: number; leftAt?: number; bubble?: ChatBubble; } // tx/ty = lerp target; bornAt = first-seen ms; leftAt = vanish-started ms
 
 const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 190, flair: "emblem" };
 
 export interface ClientWorld {
   selfId: string | null;
-  self: { x: number; y: number; facing: Facing; moving: boolean };
+  self: { x: number; y: number; facing: Facing; moving: boolean; name: string; bubble?: ChatBubble };
   selfCosmetics: Cosmetics;
   remotes: Map<string, RemotePlayer>;
   spots: Spot[];
@@ -18,7 +21,7 @@ export interface ClientWorld {
 export function createWorld(): ClientWorld {
   return {
     selfId: null,
-    self: { x: ROOM_CONFIG.arenaWidth / 2, y: ROOM_CONFIG.arenaHeight / 2, facing: "down", moving: false },
+    self: { x: ROOM_CONFIG.arenaWidth / 2, y: ROOM_CONFIG.arenaHeight / 2, facing: "down", moving: false, name: "" },
     selfCosmetics: DEFAULT_COSMETICS,
     remotes: new Map(),
     spots: [],
@@ -32,10 +35,10 @@ export function applyState(world: ClientWorld, players: PlayerWire[], spots: Spo
   const seen = new Set<string>();
   for (const p of players) {
     seen.add(p.id);
-    if (p.id === world.selfId) continue; // self is locally predicted
+    if (p.id === world.selfId) { world.self.name = p.name; continue; } // self position is locally predicted
     const existing = world.remotes.get(p.id);
     if (existing) {
-      existing.tx = p.x; existing.ty = p.y; existing.facing = p.facing; existing.moving = p.moving; existing.cosmetics = p.cosmetics;
+      existing.name = p.name; existing.tx = p.x; existing.ty = p.y; existing.facing = p.facing; existing.moving = p.moving; existing.cosmetics = p.cosmetics;
       existing.leftAt = undefined; // re-seen: cancel any in-flight dissolve
     } else {
       world.remotes.set(p.id, { ...p, tx: p.x, ty: p.y, bornAt: performance.now() });

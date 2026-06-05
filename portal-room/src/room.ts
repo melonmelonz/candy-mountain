@@ -2,14 +2,17 @@ import type { Env } from "./index";
 import type { Player, PlayerId, RoomState, Cosmetics, Facing, Flair } from "../../src/game/types";
 import { ROOM_CONFIG } from "../../src/game/config";
 import { tick } from "../../src/game/reducer";
-import { encode, decode, type ClientMsg, type PlayerWire, type ServerMsg } from "../../src/protocol";
+import { encode, decode, sanitizeChatText, type ClientMsg, type PlayerWire, type ServerMsg, type ChatMessage } from "../../src/protocol";
 import { todaysLink } from "./links";
+import { generateCandidates, assignName } from "../../src/game/namegen";
 
 const TICK_MS = 100; // 10 Hz
 const SPAWN_MARGIN = 80;
 const FACINGS: Facing[] = ["up", "down", "left", "right"];
 const FLAIRS: Flair[] = ["antenna", "backpack", "trail", "emblem"];
 const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 0, flair: "antenna" };
+const MAX_CHAT_HISTORY = 10;
+const CHAT_RATE_LIMIT_MS = 1000; // 1 msg/sec per player
 
 interface SocketAttachment {
   id: PlayerId;
@@ -38,12 +41,22 @@ function sanitizeCosmetics(raw: unknown): Cosmetics {
   return { hue, visorHue, flair };
 }
 
+// Names are auto-assigned and unique among currently-present players. They are
+// not persisted, so reconnecting players get a fresh name.
+function generateUniqueName(id: PlayerId, existing: Record<PlayerId, Player>): string {
+  const candidates = generateCandidates(id, 15);
+  const taken = new Set(Object.values(existing).map((p) => p.name));
+  return assignName(candidates, taken);
+}
+
 export class PortalRoom implements DurableObject {
   private players: Record<PlayerId, Player> = {};
   private charge = 0;
   private spots: RoomState["spots"] = [];
   private socketFor = new Map<WebSocket, PlayerId>();
   private alarmSet = false;
+  private chatHistory: ChatMessage[] = [];
+  private lastChatAt = new Map<PlayerId, number>();
 
   constructor(private state: DurableObjectState, private env: Env) {
     // In-memory state is lost on hibernation eviction; getWebSockets() is the
@@ -57,6 +70,7 @@ export class PortalRoom implements DurableObject {
       this.socketFor.set(ws, att.id);
       this.players[att.id] = {
         id: att.id,
+        name: generateUniqueName(att.id, this.players),
         pos: randomSpawn(),
         facing: "down",
         moving: false,
@@ -89,6 +103,7 @@ export class PortalRoom implements DurableObject {
     const dayId = dayIdNow();
     this.players[id] = {
       id,
+      name: generateUniqueName(id, this.players),
       pos: spawn,
       facing: "down",
       moving: false,
@@ -96,6 +111,9 @@ export class PortalRoom implements DurableObject {
       lastInputAt: Date.now(),
     };
     server.send(encode({ t: "welcome", id, spawn, dayId } satisfies ServerMsg));
+    if (this.chatHistory.length > 0) {
+      server.send(encode({ t: "history", messages: this.chatHistory } satisfies ServerMsg));
+    }
     this.ensureAlarm();
 
     return new Response(null, { status: 101, webSocket: client });
@@ -119,6 +137,7 @@ export class PortalRoom implements DurableObject {
     if (!p) {
       p = {
         id,
+        name: generateUniqueName(id, this.players),
         pos: randomSpawn(),
         facing: "down",
         moving: false,
@@ -140,7 +159,32 @@ export class PortalRoom implements DurableObject {
       if (Number.isFinite(y)) p.pos.y = Math.max(0, Math.min(ROOM_CONFIG.arenaHeight, y));
       if (FACINGS.includes(msg.facing)) p.facing = msg.facing;
       p.moving = msg.moving === true;
+    } else if (msg.t === "chat") {
+      this.handleChatMessage(id, p.name, msg.text);
     }
+  }
+
+  private handleChatMessage(playerId: PlayerId, playerName: string, rawText: unknown) {
+    const now = Date.now();
+    const lastChat = this.lastChatAt.get(playerId) ?? 0;
+    if (now - lastChat < CHAT_RATE_LIMIT_MS) return; // drop rate-limited frames
+
+    const text = sanitizeChatText(rawText, 500);
+    if (text.length === 0) return; // ignore empty/stripped messages
+
+    const chatMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      playerId,
+      name: playerName,
+      text,
+      timestamp: now,
+    };
+    this.chatHistory.push(chatMsg);
+    if (this.chatHistory.length > MAX_CHAT_HISTORY) {
+      this.chatHistory = this.chatHistory.slice(-MAX_CHAT_HISTORY);
+    }
+    this.lastChatAt.set(playerId, now);
+    this.broadcast(encode({ t: "chat", msg: chatMsg } satisfies ServerMsg));
   }
 
   async webSocketClose(ws: WebSocket) {
@@ -155,6 +199,7 @@ export class PortalRoom implements DurableObject {
     if (id) {
       delete this.players[id];
       this.socketFor.delete(ws);
+      this.lastChatAt.delete(id);
     }
   }
 
@@ -183,6 +228,7 @@ export class PortalRoom implements DurableObject {
 
       const playersWire: PlayerWire[] = Object.values(this.players).map((p) => ({
         id: p.id,
+        name: p.name,
         x: p.pos.x,
         y: p.pos.y,
         facing: p.facing,

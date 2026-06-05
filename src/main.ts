@@ -94,7 +94,17 @@ const net = connect({
       playOpenSwell();
     }
   },
+  onChat: (msg) => {
+    const bubble = { text: msg.text, at: performance.now() };
+    if (msg.playerId === world.selfId) world.self.bubble = bubble;
+    else { const r = world.remotes.get(msg.playerId); if (r) r.bubble = bubble; }
+  },
 });
+
+// --- diegetic chat: press Enter to "speak"; words form above your drifter ---
+let typing = false;
+let draft = "";
+const CHAT_MAX = 120;
 
 // --- input-driven flair: ambience needs a user gesture; eggs read the key stream ---
 const KONAMI = "uuddlrlrba";
@@ -103,6 +113,25 @@ function onFirstGesture() { startAmbience(); }
 addEventListener("pointerdown", onFirstGesture, { once: true });
 addEventListener("keydown", (e: KeyboardEvent) => {
   startAmbience();
+
+  // while composing, the keyboard belongs to the chat draft
+  if (typing) {
+    if (e.key === "Enter") {
+      const text = draft.trim();
+      typing = false; input.setPaused(false); draft = "";
+      if (text) { net.send({ t: "chat", text }); world.self.bubble = { text, at: performance.now() }; }
+      else world.self.bubble = undefined;
+      e.preventDefault(); return;
+    }
+    if (e.key === "Escape") { typing = false; input.setPaused(false); draft = ""; world.self.bubble = undefined; e.preventDefault(); return; }
+    if (e.key === "Backspace") { draft = draft.slice(0, -1); e.preventDefault(); return; }
+    if (e.key.length === 1 && draft.length < CHAT_MAX) draft += e.key;
+    e.preventDefault(); return;
+  }
+
+  // Enter (when idle) opens speak mode and halts movement
+  if (e.key === "Enter") { typing = true; input.setPaused(true); draft = ""; e.preventDefault(); return; }
+
   // build a rolling lowercase sequence for egg detection
   const arrow: Record<string, string> = { ArrowUp: "u", ArrowDown: "d", ArrowLeft: "l", ArrowRight: "r" };
   const ch = arrow[e.key] ?? (e.key.length === 1 ? e.key.toLowerCase() : "");
@@ -139,6 +168,9 @@ async function start() {
 
     setCharge(world.charge);
     setTitle(world.charge, !!opening);
+
+    // live draft floats above your own drifter as you type
+    if (typing) world.self.bubble = { text: draft + "\u258c", at: now };
 
     // whisper on threshold crossings; only when climbing into a higher band
     const band = bandFor(world.charge);

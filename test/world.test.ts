@@ -6,7 +6,7 @@ import type { PlayerWire } from "../src/protocol";
 const SPEED = 220;
 
 function makePlayer(id: string, x: number, y: number): PlayerWire {
-  return { id, x, y, facing: "down", moving: false, cosmetics: { hue: 0, visorHue: 0, flair: "antenna" } };
+  return { id, name: id, x, y, facing: "down", moving: false, cosmetics: { hue: 0, visorHue: 0, flair: "antenna" } };
 }
 
 describe("stepSelf", () => {

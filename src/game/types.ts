@@ -13,6 +13,7 @@ export interface Cosmetics {
 
 export interface Player {
   id: PlayerId;
+  name: string;
   pos: Vec2;
   facing: Facing;
   moving: boolean;

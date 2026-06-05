@@ -180,6 +180,89 @@ function drawFlair(ctx: CanvasRenderingContext2D, c: Cosmetics, px: number, py: 
   }
 }
 
+const BUBBLE_MS = 6000;       // total time a spoken line lingers
+const BUBBLE_FADE_MS = 1000;  // fade window at the end
+
+// A spoken line, rendered in-world above the drifter's head (not a HUD). Shows
+// the speaker's auto name and wraps to a few lines, fading out near the end.
+function drawSpeechBubble(
+  ctx: CanvasRenderingContext2D,
+  text: string, name: string,
+  px: number, headY: number, scale: number, visorHue: number, tMs: number, at: number,
+) {
+  const age = tMs - at;
+  if (age >= BUBBLE_MS) return;
+  const alpha = age > BUBBLE_MS - BUBBLE_FADE_MS ? Math.max(0, (BUBBLE_MS - age) / BUBBLE_FADE_MS) : 1;
+
+  const fontPx = Math.max(12, Math.round(15 * scale));
+  const namePx = Math.max(10, Math.round(11 * scale));
+  const pad = 8 * scale;
+  const maxW = Math.max(150, 200 * scale);
+
+  // word-wrap the body text
+  ctx.font = `400 ${fontPx}px "Trebuchet MS", "Segoe UI", system-ui, sans-serif`;
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const trial = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(trial).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = trial;
+  }
+  if (cur) lines.push(cur);
+
+  const lineH = fontPx * 1.25;
+  const bodyW = Math.min(maxW, Math.max(...lines.map((l) => ctx.measureText(l).width)));
+  ctx.font = `700 ${namePx}px "Trebuchet MS", "Segoe UI", system-ui, sans-serif`;
+  const nameW = ctx.measureText(name).width;
+  const boxW = Math.max(bodyW, nameW) + pad * 2;
+  const boxH = namePx + 4 * scale + lines.length * lineH + pad * 2;
+  const bx = px - boxW / 2;
+  const by = headY - 14 * scale - boxH; // float above the head
+  const r = 8 * scale;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // rounded panel
+  ctx.beginPath();
+  ctx.moveTo(bx + r, by);
+  ctx.arcTo(bx + boxW, by, bx + boxW, by + boxH, r);
+  ctx.arcTo(bx + boxW, by + boxH, bx, by + boxH, r);
+  ctx.arcTo(bx, by + boxH, bx, by, r);
+  ctx.arcTo(bx, by, bx + boxW, by, r);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(8,10,28,0.82)";
+  ctx.fill();
+  ctx.lineWidth = 1.5 * scale;
+  ctx.strokeStyle = `hsla(${visorHue},85%,72%,0.7)`;
+  ctx.shadowColor = `hsla(${visorHue},90%,65%,0.6)`;
+  ctx.shadowBlur = 8 * scale;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // little tail pointing down toward the drifter
+  ctx.beginPath();
+  ctx.moveTo(px - 6 * scale, by + boxH - 0.5);
+  ctx.lineTo(px + 6 * scale, by + boxH - 0.5);
+  ctx.lineTo(px, by + boxH + 7 * scale);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(8,10,28,0.82)";
+  ctx.fill();
+
+  // name line + body
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.font = `700 ${namePx}px "Trebuchet MS", "Segoe UI", system-ui, sans-serif`;
+  ctx.fillStyle = `hsla(${visorHue},90%,80%,0.95)`;
+  ctx.fillText(name, px, by + pad);
+  ctx.font = `400 ${fontPx}px "Trebuchet MS", "Segoe UI", system-ui, sans-serif`;
+  ctx.fillStyle = "rgba(226,232,255,0.96)";
+  let ly = by + pad + namePx + 4 * scale;
+  for (const l of lines) { ctx.fillText(l, px, ly); ly += lineH; }
+  ctx.restore();
+}
+
 export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, assets: Assets, vw: number, vh: number, tMs: number) {
   const sx = vw / ROOM_CONFIG.arenaWidth;
   const sy = vh / ROOM_CONFIG.arenaHeight;
@@ -285,4 +368,15 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   const selfSheet = tintedSheet(assets.drifter, world.selfCosmetics.hue);
   drawDrifter(ctx, selfSheet, world.self.facing, world.self.moving, spx, spy - selfLift, scale, tMs);
   drawFlair(ctx, world.selfCosmetics, spx, spy - selfLift, scale, world.self.facing, tMs);
+
+  // speech bubbles, drawn last so they sit above every drifter
+  for (const r of world.remotes.values()) {
+    if (!r.bubble) continue;
+    if (r.leftAt !== undefined && tMs - r.leftAt >= 600) continue;
+    const lift = hoverOffset(tMs, phaseOf(r.id), r.moving, sx);
+    drawSpeechBubble(ctx, r.bubble.text, r.name, r.x * sx, r.y * sy - lift - 40 * scale, scale, r.cosmetics.visorHue, tMs, r.bubble.at);
+  }
+  if (world.self.bubble) {
+    drawSpeechBubble(ctx, world.self.bubble.text, world.self.name || "you", spx, spy - selfLift - 40 * scale, scale, world.selfCosmetics.visorHue, tMs, world.self.bubble.at);
+  }
 }
