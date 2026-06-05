@@ -6,10 +6,13 @@ export interface Camera { locked: boolean; t: number; last: number; selfX: numbe
 export function createCamera(): Camera { return { locked: false, t: 0, last: 0, selfX: ROOM_CONFIG.arenaWidth / 2, selfY: ROOM_CONFIG.arenaHeight / 2 }; }
 
 // Tight enough that the gate (arena center) is never in frame from any legal
-// spawn: the closest a drifter can spawn is MIN_PORTAL_DIST=320 from the gate,
-// and at this zoom that distance always falls outside the visible rectangle.
+// spawn: the closest a drifter can spawn is MIN_PORTAL_DIST from the gate, and
+// at this zoom that distance always falls outside the visible rectangle.
 const SPAWN_ZOOM = 2.5;
-const LOCK_DIST = 170;            // arena units from gate that trigger the lock
+// Arena units of gate body+glow reach. The lock fires the instant the portal's
+// edge crosses into the visible rectangle, so the zoom-out begins exactly as the
+// gate comes into view rather than after the player walks closer.
+const GATE_REVEAL_MARGIN = 110;
 const LOCK_MS = 1000;             // ease duration once latched
 
 function easeInOut(x: number): number { return x < 0.5 ? 2*x*x : 1 - Math.pow(-2*x + 2, 2)/2; }
@@ -22,8 +25,23 @@ export function updateCamera(cam: Camera, selfX: number, selfY: number, tMs: num
   cam.selfX = selfX;
   cam.selfY = selfY;
   const gx = ROOM_CONFIG.seamX, gy = ROOM_CONFIG.arenaHeight / 2;
-  if (!cam.locked && Math.hypot(selfX - gx, selfY - gy) <= LOCK_DIST) cam.locked = true;
+  // Visible half-extents (arena units) of the spawn framing, padded by the gate's
+  // own size: when the gate falls inside this rectangle it has come into view.
+  const hw = ROOM_CONFIG.arenaWidth / (2 * SPAWN_ZOOM) + GATE_REVEAL_MARGIN;
+  const hh = ROOM_CONFIG.arenaHeight / (2 * SPAWN_ZOOM) + GATE_REVEAL_MARGIN;
+  if (!cam.locked && Math.abs(selfX - gx) <= hw && Math.abs(selfY - gy) <= hh) cam.locked = true;
   if (cam.locked) cam.t = Math.min(1, cam.t + dt / LOCK_MS);
+}
+
+// Current eased camera focus in ARENA coords (player during exploration ->
+// arena center at the ritual lock). Used to drive background parallax so the
+// cosmos shifts as the local drifter moves.
+export function cameraFocusArena(cam: Camera): { x: number; y: number } {
+  const e = easeInOut(cam.t);
+  return {
+    x: lerp(cam.selfX, ROOM_CONFIG.arenaWidth / 2, e),
+    y: lerp(cam.selfY, ROOM_CONFIG.arenaHeight / 2, e),
+  };
 }
 
 // Exposed for testing; pushCamera uses this so the test covers the real math.

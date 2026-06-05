@@ -5,7 +5,7 @@ import { drawGate } from "./gate";
 import { drawCharacter, drawNegativeShimmerChar } from "./sprite";
 import { createBackground, drawBackground, type BgState } from "./background";
 import { drawGuide } from "./guide";
-import { createCamera, updateCamera, pushCamera } from "./camera";
+import { createCamera, updateCamera, pushCamera, cameraFocusArena } from "./camera";
 
 // Drifters near the gate catch its light: a soft additive halo that grows with
 // proximity and with portal charge. cx/cy/rPortal are the portal's screen geometry.
@@ -132,7 +132,14 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   updateCamera(cam, world.self.x, world.self.y, tMs);
   ctx.clearRect(0, 0, vw, vh);
   if (!bg || bgW !== vw || bgH !== vh) { bg = createBackground(vw, vh); bgW = vw; bgH = vh; }
-  drawBackground(ctx, bg, vw, vh, tMs, world.charge);
+  // Couple the cosmos to the local drifter: as the camera focus moves away from
+  // arena center (i.e. while exploring), shift the parallax layers the opposite
+  // way so walking produces real depth motion. At the ritual lock focus returns
+  // to center and parX/parY ease back to 0.
+  const foc = cameraFocusArena(cam);
+  const parX = (ROOM_CONFIG.arenaWidth / 2 - foc.x) * sx;
+  const parY = (ROOM_CONFIG.arenaHeight / 2 - foc.y) * sy;
+  drawBackground(ctx, bg, vw, vh, tMs, world.charge, parX, parY);
   // The high-def background draws with smoothing ON; the pixel-art gate/sprite
   // layers below rely on nearest-neighbor, so force it back off here.
   ctx.imageSmoothingEnabled = false;
