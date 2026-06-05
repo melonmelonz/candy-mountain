@@ -129,7 +129,10 @@ function drawSpeechBubble(
 export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, assets: Assets, vw: number, vh: number, tMs: number) {
   const sx = vw / ROOM_CONFIG.arenaWidth;
   const sy = vh / ROOM_CONFIG.arenaHeight;
-  updateCamera(cam, world.self.x, world.self.y, tMs);
+  // Only run the camera once the server welcome has placed us at our real spawn.
+  // Before that, world.self sits at the arena center (the gate) and would latch
+  // the reveal instantly, framing the portal the moment you spawn.
+  if (world.selfId) updateCamera(cam, world.self.x, world.self.y, tMs);
   ctx.clearRect(0, 0, vw, vh);
   if (!bg || bgW !== vw || bgH !== vh) { bg = createBackground(vw, vh); bgW = vw; bgH = vh; }
   // Couple the cosmos to the local drifter: as the camera focus moves away from
