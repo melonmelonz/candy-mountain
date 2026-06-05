@@ -5,6 +5,7 @@ import type { Cosmetics, Facing } from "./types";
 import { ROOM_CONFIG } from "./config";
 import { drawPortal } from "./portalfx";
 import { tintedSheet, drawDrifter, drawNegativeShimmer } from "./sprite";
+import { createBackground, drawBackground, type BgState } from "./background";
 
 // Resolve the drawable sheet for a drifter: pick its roster sheet by sprite
 // index (wrapped defensively), hue-tinting only the sheets marked tintable.
@@ -73,45 +74,9 @@ function drawGroundShadow(ctx: CanvasRenderingContext2D, px: number, py: number,
   ctx.restore();
 }
 
-// Deterministic starfield so it does not swim between frames.
-const STARS = Array.from({ length: 140 }, (_, i) => {
-  const r = ((i * 2654435761) >>> 0) / 0xffffffff;
-  const g = (((i + 1) * 40503) >>> 0) / 0xffff % 1;
-  return { x: r, y: g, tw: (i % 7) / 7 };
-});
-
-function drawBackground(ctx: CanvasRenderingContext2D, vw: number, vh: number, tMs: number) {
-  // Deep void, pitched to the gate's abyssal palette so the two read as one place.
-  ctx.fillStyle = "#050310";
-  ctx.fillRect(0, 0, vw, vh);
-
-  // The gate is the only light in the void: a cool nebular glow centered on the
-  // portal, so the surrounding dark feels lit *by* the gate rather than decorated.
-  const px = ROOM_CONFIG.seamX * (vw / ROOM_CONFIG.arenaWidth);
-  const py = (ROOM_CONFIG.arenaHeight / 2) * (vh / ROOM_CONFIG.arenaHeight);
-  const neb = ctx.createRadialGradient(px, py, 0, px, py, Math.max(vw, vh) * 0.62);
-  neb.addColorStop(0, "rgba(48,40,110,0.26)");
-  neb.addColorStop(0.5, "rgba(24,20,66,0.12)");
-  neb.addColorStop(1, "rgba(5,3,16,0)");
-  ctx.fillStyle = neb;
-  ctx.fillRect(0, 0, vw, vh);
-
-  // twinkling stars (the original starfield, kept clean and restrained)
-  for (const s of STARS) {
-    const a = 0.3 + 0.35 * Math.sin(tMs / 700 + s.tw * Math.PI * 2);
-    ctx.globalAlpha = Math.max(0, a);
-    ctx.fillStyle = "#cfe8ff";
-    ctx.fillRect(s.x * vw, s.y * vh, 1.5, 1.5);
-  }
-  ctx.globalAlpha = 1;
-
-  // a whisper of vignette at the very edges — focus without an obvious frame
-  const vig = ctx.createRadialGradient(px, py, Math.min(vw, vh) * 0.45, px, py, Math.max(vw, vh) * 0.78);
-  vig.addColorStop(0, "rgba(0,0,0,0)");
-  vig.addColorStop(1, "rgba(0,0,0,0.4)");
-  ctx.fillStyle = vig;
-  ctx.fillRect(0, 0, vw, vh);
-}
+// High-def parallax background state, recreated when the canvas size changes.
+let bg: BgState | null = null;
+let bgW = 0, bgH = 0;
 
 // Cinematic "portal swallows the screen" bloom. k goes 0..1. The portal blooms
 // outward from its arena position. The caller layers transmission text, then the
@@ -258,7 +223,11 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   const sx = vw / ROOM_CONFIG.arenaWidth;
   const sy = vh / ROOM_CONFIG.arenaHeight;
   ctx.clearRect(0, 0, vw, vh);
-  drawBackground(ctx, vw, vh, tMs);
+  if (!bg || bgW !== vw || bgH !== vh) { bg = createBackground(vw, vh); bgW = vw; bgH = vh; }
+  drawBackground(ctx, bg, vw, vh, tMs, world.charge);
+  // The high-def background draws with smoothing ON; the pixel-art gate/sprite
+  // layers below rely on nearest-neighbor, so force it back off here.
+  ctx.imageSmoothingEnabled = false;
 
   // subtle divide marking the split (no UI, just a faint vertical current)
   const cx = ROOM_CONFIG.seamX * sx, cy = (ROOM_CONFIG.arenaHeight / 2) * sy;
