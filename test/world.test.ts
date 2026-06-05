@@ -88,7 +88,7 @@ describe("applyState", () => {
     const world = createWorld();
     world.selfId = "self";
     const p = makePlayer("remote1", 100, 200);
-    applyState(world, [p], [], 0);
+    applyState(world, [p], [], 0, "test-gate-id");
     const r = world.remotes.get("remote1");
     expect(r).toBeDefined();
     expect(r!.tx).toBe(100);
@@ -99,7 +99,7 @@ describe("applyState", () => {
     const world = createWorld();
     world.selfId = "self";
     const p = makePlayer("self", 100, 200);
-    applyState(world, [p], [], 0);
+    applyState(world, [p], [], 0, "test-gate-id");
     expect(world.remotes.has("self")).toBe(false);
   });
 
@@ -107,18 +107,18 @@ describe("applyState", () => {
     const world = createWorld();
     world.selfId = "self";
     const p = makePlayer("remote1", 100, 200);
-    applyState(world, [p], [], 0);
+    applyState(world, [p], [], 0, "test-gate-id");
     expect(world.remotes.has("remote1")).toBe(true);
 
     // first absence: still present but marked for dissolve
-    applyState(world, [], [], 0);
+    applyState(world, [], [], 0, "test-gate-id");
     const r = world.remotes.get("remote1");
     expect(r).toBeDefined();
     expect(r!.leftAt).toBeGreaterThan(0);
 
     // backdate the dissolve so the fade window has elapsed, then prune
     r!.leftAt = performance.now() - 800;
-    applyState(world, [], [], 0);
+    applyState(world, [], [], 0, "test-gate-id");
     expect(world.remotes.has("remote1")).toBe(false);
   });
 
@@ -126,10 +126,10 @@ describe("applyState", () => {
     const world = createWorld();
     world.selfId = "self";
     const p = makePlayer("remote1", 100, 200);
-    applyState(world, [p], [], 0);
-    applyState(world, [], [], 0);
+    applyState(world, [p], [], 0, "test-gate-id");
+    applyState(world, [], [], 0, "test-gate-id");
     expect(world.remotes.get("remote1")!.leftAt).toBeGreaterThan(0);
-    applyState(world, [p], [], 0);
+    applyState(world, [p], [], 0, "test-gate-id");
     expect(world.remotes.get("remote1")!.leftAt).toBeUndefined();
   });
 });
@@ -139,7 +139,7 @@ describe("interpolateRemotes", () => {
     const world = createWorld();
     world.selfId = "self";
     const p = makePlayer("remote1", 100, 0);
-    applyState(world, [p], [], 0);
+    applyState(world, [p], [], 0, "test-gate-id");
     // Manually set r.x to 0 so we have x=0, tx=100
     const r = world.remotes.get("remote1")!;
     r.x = 0;

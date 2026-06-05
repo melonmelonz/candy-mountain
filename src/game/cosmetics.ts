@@ -23,6 +23,10 @@ export function loadOrCreateCosmetics(storage: Storage, rng: () => number = Math
       if (typeof c.sprite !== "number") {
         c.sprite = Math.floor(rng() * ROSTER_COUNT);
         storage.setItem(KEY, JSON.stringify(c));
+      } else if (c.sprite < 0 || c.sprite >= ROSTER_COUNT) {
+        // Clamp stale out-of-range sprite index (e.g. saved when roster was smaller).
+        c.sprite = Math.floor(rng() * ROSTER_COUNT);
+        storage.setItem(KEY, JSON.stringify(c));
       }
       return c as Cosmetics;
     } catch {

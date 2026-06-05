@@ -94,8 +94,8 @@ function showEgg(text: string, sub: string, confettiBurst: boolean) {
 }
 
 const net = connect({
-  onWelcome: (id, spawn) => { world.selfId = id; world.self.x = spawn.x; world.self.y = spawn.y; net.send({ t: "hello", cosmetics }); },
-  onState: (msg) => applyState(world, msg.players, msg.spots, msg.charge),
+  onWelcome: (id, spawn, _dayId, gateId) => { world.selfId = id; world.self.x = spawn.x; world.self.y = spawn.y; world.gateId = gateId; net.send({ t: "hello", cosmetics }); },
+  onState: (msg) => applyState(world, msg.players, msg.spots, msg.charge, msg.gateId),
   onOpen: (url) => {
     if (!opening) {
       opening = { url, start: performance.now(), fired: false, line: pick(OPEN_LINES), sub: pick(OPEN_SUBS) };

@@ -31,7 +31,8 @@ export function createWorld(): ClientWorld {
   };
 }
 
-export function applyState(world: ClientWorld, players: PlayerWire[], spots: Spot[], charge: number) {
+export function applyState(world: ClientWorld, players: PlayerWire[], spots: Spot[], charge: number, gateId: string) {
+  world.gateId = gateId;
   world.spots = spots;
   world.charge = charge;
   const seen = new Set<string>();
