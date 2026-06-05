@@ -21,6 +21,26 @@ function hoverOffset(tMs: number, phase: number, moving: boolean, sx: number): n
   return Math.sin(tMs / period + phase) * amp * sx;
 }
 
+// Drifters near the gate catch its light: a soft additive halo that grows with
+// proximity and with portal charge. cx/cy/rPortal are the portal's screen geometry.
+function drawPortalKiss(ctx: CanvasRenderingContext2D, px: number, py: number, cx: number, cy: number, rPortal: number, scale: number, e: number) {
+  const reach = rPortal * 2.2;
+  const d = Math.hypot(px - cx, py - cy);
+  if (d >= reach) return;
+  const k = (1 - d / reach) * (0.35 + 0.65 * e);
+  if (k <= 0.01) return;
+  const r = 34 * scale;
+  const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+  g.addColorStop(0, `hsla(200,100%,75%,${0.5 * k})`);
+  g.addColorStop(0.6, `hsla(272,90%,62%,${0.28 * k})`);
+  g.addColorStop(1, "hsla(272,90%,62%,0)");
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
 // Soft contact shadow grounds the floating sprite. Shrinks as the drifter rises.
 function drawGroundShadow(ctx: CanvasRenderingContext2D, px: number, py: number, scale: number, lift: number) {
   const shrink = 1 - Math.min(0.35, Math.abs(lift) * 0.04);
@@ -207,6 +227,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   ctx.restore();
 
   const scale = sx * DRIFTER_SCALE;
+  const rPortal = 72 * sx;
+  const e = Math.max(0, Math.min(1, world.charge / 100));
 
   // remote players
   for (const r of world.remotes.values()) {
@@ -238,6 +260,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
       ctx.restore();
     }
     ctx.globalAlpha = Math.min(intro, 1 - outro);
+    drawPortalKiss(ctx, px, py - lift, cx, cy, rPortal, scale, e);
     drawDrifter(ctx, sheet, r.facing, r.moving, px, py - lift, scale, tMs);
     drawFlair(ctx, r.cosmetics, px, py - lift, scale, r.facing, tMs);
     ctx.globalAlpha = 1;
@@ -247,6 +270,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   const selfLift = hoverOffset(tMs, 0, world.self.moving, sx);
   const spx = world.self.x * sx, spy = world.self.y * sy;
   drawGroundShadow(ctx, spx, spy, scale, selfLift);
+  drawPortalKiss(ctx, spx, spy - selfLift, cx, cy, rPortal, scale, e);
   const selfSheet = tintedSheet(assets.drifter, world.selfCosmetics.hue);
   drawDrifter(ctx, selfSheet, world.self.facing, world.self.moving, spx, spy - selfLift, scale, tMs);
   drawFlair(ctx, world.selfCosmetics, spx, spy - selfLift, scale, world.self.facing, tMs);
