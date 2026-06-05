@@ -55,3 +55,48 @@ export function drawDrifter(
   const dw = CELL * scale, dh = CELL * scale;
   ctx.drawImage(sheet, sxCell, syCell, CELL, CELL, px - dw / 2, py - dh / 2, dw, dh);
 }
+
+// Scratch canvas reused across frames to build the inverted cell once per call.
+let shimmerScratch: HTMLCanvasElement | null = null;
+
+// Photo-negative overlay of one drifter cell, blended at `alpha` over whatever
+// is already drawn at (px,py). Marks drifters standing in the inverted far half.
+// RGB is inverted ("difference" against white) while the sprite's alpha mask is
+// preserved ("destination-in"), so transparent cells stay transparent.
+export function drawNegativeShimmer(
+  ctx: CanvasRenderingContext2D,
+  sheet: CanvasImageSource,
+  facing: Facing,
+  moving: boolean,
+  px: number,
+  py: number,
+  scale: number,
+  tMs: number,
+  alpha: number,
+) {
+  if (alpha <= 0.01) return;
+  if (!shimmerScratch) {
+    shimmerScratch = document.createElement("canvas");
+    shimmerScratch.width = CELL;
+    shimmerScratch.height = CELL;
+  }
+  const c = shimmerScratch.getContext("2d")!;
+  const sxCell = frameCol(moving, tMs) * CELL;
+  const syCell = ROW[facing] * CELL;
+
+  c.globalCompositeOperation = "source-over";
+  c.clearRect(0, 0, CELL, CELL);
+  c.drawImage(sheet, sxCell, syCell, CELL, CELL, 0, 0, CELL, CELL);
+  c.globalCompositeOperation = "difference";
+  c.fillStyle = "#ffffff";
+  c.fillRect(0, 0, CELL, CELL);
+  c.globalCompositeOperation = "destination-in";
+  c.drawImage(sheet, sxCell, syCell, CELL, CELL, 0, 0, CELL, CELL);
+  c.globalCompositeOperation = "source-over";
+
+  const dw = CELL * scale, dh = CELL * scale;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(shimmerScratch, px - dw / 2, py - dh / 2, dw, dh);
+  ctx.restore();
+}

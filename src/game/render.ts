@@ -4,7 +4,7 @@ import { SHEETS } from "./assets";
 import type { Cosmetics, Facing } from "./types";
 import { ROOM_CONFIG } from "./config";
 import { drawPortal } from "./portalfx";
-import { tintedSheet, drawDrifter } from "./sprite";
+import { tintedSheet, drawDrifter, drawNegativeShimmer } from "./sprite";
 
 // Resolve the drawable sheet for a drifter: pick its roster sheet by sprite
 // index (wrapped defensively), hue-tinting only the sheets marked tintable.
@@ -347,6 +347,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
     ctx.globalAlpha = Math.min(intro, 1 - outro);
     drawPortalKiss(ctx, px, py - lift, cx, cy, rPortal, scale, e);
     drawDrifter(ctx, sheet, r.facing, r.moving, px, py - lift, scale, tMs);
+    if (r.x > ROOM_CONFIG.seamX) {
+      drawNegativeShimmer(ctx, sheet, r.facing, r.moving, px, py - lift, scale, tMs, 0.4 * Math.min(intro, 1 - outro));
+    }
     drawFlair(ctx, r.cosmetics, px, py - lift, scale, r.facing, tMs);
     ctx.globalAlpha = 1;
   }
@@ -358,6 +361,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   drawPortalKiss(ctx, spx, spy - selfLift, cx, cy, rPortal, scale, e);
   const selfSheet = sheetFor(assets, world.selfCosmetics);
   drawDrifter(ctx, selfSheet, world.self.facing, world.self.moving, spx, spy - selfLift, scale, tMs);
+  if (world.self.x > ROOM_CONFIG.seamX) {
+    drawNegativeShimmer(ctx, selfSheet, world.self.facing, world.self.moving, spx, spy - selfLift, scale, tMs, 0.4);
+  }
   drawFlair(ctx, world.selfCosmetics, spx, spy - selfLift, scale, world.self.facing, tMs);
 
   // speech bubbles, drawn last so they sit above every drifter
