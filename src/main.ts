@@ -18,6 +18,38 @@ let vw = 0, vh = 0;
 function resize() { vw = canvas.width = innerWidth; vh = canvas.height = innerHeight; }
 addEventListener("resize", resize); resize();
 
+// Procedural favicon: a tiny azure/violet portal so the tab carries the identity.
+function installFavicon() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 32;
+  const g = c.getContext("2d")!;
+  const grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, "#bdefff");
+  grad.addColorStop(0.45, "#6a9cff");
+  grad.addColorStop(0.8, "#8a3df0");
+  grad.addColorStop(1, "#0a0422");
+  g.fillStyle = grad;
+  g.beginPath(); g.arc(16, 16, 15, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = "rgba(190,236,255,0.9)"; g.lineWidth = 2;
+  g.beginPath(); g.arc(16, 16, 14, 0, Math.PI * 2); g.stroke();
+  let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+  if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
+  link.type = "image/png";
+  link.href = c.toDataURL("image/png");
+}
+installFavicon();
+
+// Diegetic tab title that warms with the portal; only written when it changes.
+let lastTitle = "";
+function setTitle(charge: number, isOpening: boolean) {
+  const t = isOpening ? "the way is open"
+    : charge >= 85 ? "candy mountain - almost"
+    : charge >= 55 ? "candy mountain - it warms"
+    : charge >= 25 ? "candy mountain - it stirs"
+    : "candy mountain";
+  if (t !== lastTitle) { document.title = t; lastTitle = t; }
+}
+
 const world = createWorld();
 const input = createInput();
 const cosmetics = loadOrCreateCosmetics(localStorage);
@@ -106,6 +138,7 @@ async function start() {
     }
 
     setCharge(world.charge);
+    setTitle(world.charge, !!opening);
 
     // whisper on threshold crossings; only when climbing into a higher band
     const band = bandFor(world.charge);
