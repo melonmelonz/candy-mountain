@@ -10,8 +10,9 @@ import { generateCandidates, assignName } from "../../src/game/namegen";
 const TICK_MS = 100; // 10 Hz
 const SPAWN_MARGIN = 80;
 // Drifters spawn out toward the edges, never on top of the portal, so every
-// arrival has a journey inward. Reject any roll closer than this to the gate.
-const MIN_PORTAL_DIST = 320;
+// arrival has a real journey inward before the gate even comes into view.
+// Reject any roll closer than this to the gate.
+const MIN_PORTAL_DIST = 480;
 // Everyone spawns on the non-inverted (left) side and funnels in from there;
 // keep a small buffer off the seam so nobody starts in the inverted realm.
 const SEAM_BUFFER = 40;
@@ -45,7 +46,11 @@ function randomSpawn(): { x: number; y: number } {
     const p = roll();
     if (Math.hypot(p.x - portalX, p.y - portalY) >= MIN_PORTAL_DIST) return p;
   }
-  return roll();
+  // Fallback: hug the far-left band where x alone guarantees the distance
+  // (dx >= MIN_PORTAL_DIST for any y), so a bad streak of rolls never spawns
+  // anyone near the gate.
+  const safeXMax = Math.min(xMax, portalX - MIN_PORTAL_DIST);
+  return { x: xMin + Math.random() * (safeXMax - xMin), y: yMin + Math.random() * (yMax - yMin) };
 }
 
 function sanitizeCosmetics(raw: unknown): Cosmetics {

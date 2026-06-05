@@ -46,9 +46,10 @@ test("cameraParams at t=0 frames tightly on the player", () => {
   expect(p.fsy).toBeCloseTo(200);
 });
 
-test("the gate is outside the spawn viewport for the worst-case legal spawn", () => {
-  // Closest a drifter can spawn while staying MIN_PORTAL_DIST=320 from the gate
-  // and balancing both axes: arena (361,203). The gate sits at arena center.
+test("the gate is outside the spawn viewport even at a closer-than-legal spawn", () => {
+  // Conservative check: arena (361,203) is only ~320 from the gate, nearer than
+  // the MIN_PORTAL_DIST=480 spawn floor. If the gate stays out of frame here, it
+  // is comfortably out of frame for every real spawn (which are all farther).
   const cam = createCamera();
   updateCamera(cam, 361, 203, 16);
   const vw = 1280, vh = 720;

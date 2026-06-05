@@ -10,10 +10,10 @@ export interface RoomConfig {
   minActiveToOpen: number;
 }
 
-// How many characters exist in the 17-char roster (see assets.ts). Shared by
-// the client (random spawn) and the server (cosmetics sanitization) so an
-// out-of-range index from a client can be clamped authoritatively.
-export const ROSTER_COUNT = 17;
+// How many characters exist in the roster (see assets.ts / roster manifest).
+// Shared by the client (random spawn) and the server (cosmetics sanitization)
+// so an out-of-range index from a client can be clamped authoritatively.
+export const ROSTER_COUNT = 16;
 
 // How many daily-rotating warpgates exist (see gatepick.ts).
 export const GATE_COUNT = 6;

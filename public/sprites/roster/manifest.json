@@ -251,54 +251,6 @@
       }
     },
     {
-      "slug": "rakshasa",
-      "name": "Rakshasa",
-      "cell": 96,
-      "dirOrder": [
-        "south",
-        "south-east",
-        "east",
-        "north-east",
-        "north",
-        "north-west",
-        "west",
-        "south-west"
-      ],
-      "rotations": {
-        "file": "rakshasa/rotations.png",
-        "dirs": [
-          "south",
-          "south-east",
-          "east",
-          "north-east",
-          "north",
-          "north-west",
-          "west",
-          "south-west"
-        ]
-      },
-      "states": {
-        "animating": {
-          "file": "rakshasa/animating.png",
-          "frames": 4,
-          "dirs": [
-            "south",
-            "east",
-            "west"
-          ]
-        },
-        "slashing-with-sharp-claws": {
-          "file": "rakshasa/slashing-with-sharp-claws.png",
-          "frames": 9,
-          "dirs": [
-            "south",
-            "east",
-            "west"
-          ]
-        }
-      }
-    },
-    {
       "slug": "zhong-kui",
       "name": "Zhong Kui",
       "cell": 92,
