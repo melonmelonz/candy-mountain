@@ -6,9 +6,10 @@ export type Flair = "antenna" | "backpack" | "trail" | "emblem";
 export interface Vec2 { x: number; y: number; }
 
 export interface Cosmetics {
-  hue: number;       // 0..360 suit color
-  visorHue: number;  // 0..360 visor tint
+  hue: number;       // 0..360 suit color (only applied to tintable sheets)
+  visorHue: number;  // 0..360 visor tint (flair, bubble, portal-kiss)
   flair: Flair;
+  sprite: number;    // index into the drifter sprite-sheet roster (0..SPRITE_SHEET_COUNT-1)
 }
 
 export interface Player {

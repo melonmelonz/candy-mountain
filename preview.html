@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Candy Mountain — art preview</title>
+    <style>
+      html, body { margin: 0; background: #050310; color: #cfe8ff; font-family: system-ui, sans-serif; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
+      figure { margin: 0; }
+      figcaption { font-size: 12px; opacity: 0.7; padding: 2px 0; }
+      canvas { width: 100%; height: auto; image-rendering: pixelated; border: 1px solid #1a1640; }
+    </style>
+  </head>
+  <body>
+    <div class="grid" id="grid"></div>
+    <script type="module" src="/src/preview.ts"></script>
+  </body>
+</html>

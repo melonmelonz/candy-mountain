@@ -1,102 +1,126 @@
-// Deterministic depth particles for the void interior (stable across frames).
-const STAR_N = 90;
-const PSTARS = Array.from({ length: STAR_N }, (_, i) => {
-  const a = ((i * 2654435761) >>> 0) / 0xffffffff * Math.PI * 2;
-  const z = ((i * 40503 + 7) >>> 0) / 0xffff % 1;
-  const near = i % 5 === 0;
-  return { a, z, near };
-});
+// An eldritch gate, not a lava lamp. Built on the original's restraint:
+// a recessed abyssal well, a thin iris of aperture rings, a cold event-horizon
+// rim, and a pupil that stays dead-black until charge ignites it. Darkness is
+// the default state; light is earned. All interior layers clip to the disc and
+// brightness tracks charge (e).
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
-// A liquid "End gate": deep parallax void, swirling azure/violet currents,
-// rippling liquid bands, a charge-reactive hot core, and a glowing rim.
-// All interior layers are clipped to the portal disc; brightness == charge.
+// A few arcane rim ticks placed at fixed angles — a gate, not a clock face.
+const RIM_TICKS = 9;
+
 export function drawPortal(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number, charge: number, tMs: number) {
-  const e = Math.max(0, Math.min(1, charge / 100)); // energy 0..1
+  const e = clamp01(charge / 100);
   const t = tMs / 1000;
+  const breath = 0.5 + 0.5 * Math.sin(t * 0.6); // slow, dread-paced pulse
 
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.clip();
 
-  // 1. deep void base
-  ctx.fillStyle = "#0a0422";
+  // 1. abyssal well: dark at the rim, darker toward the throat — a bowl that
+  //    recedes away from the viewer. This reads as depth, not a flat disc.
+  const well = ctx.createRadialGradient(cx, cy, radius * 0.95, cx, cy, 0);
+  well.addColorStop(0.0, "#12082e");
+  well.addColorStop(0.5, "#0a0420");
+  well.addColorStop(1.0, "#030109");
+  ctx.fillStyle = well;
   ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
 
-  // 2. parallax depth particles receding toward the center
-  for (let i = 0; i < STAR_N; i++) {
-    const s = PSTARS[i];
-    const dz = (s.z + t * 0.05 * (0.6 + e)) % 1;
-    const depth = 1 - dz;
-    const dist = radius * (0.04 + dz * 0.96);
-    const px = cx + Math.cos(s.a) * dist;
-    const py = cy + Math.sin(s.a) * dist;
-    const sz = 0.4 + depth * (s.near ? 2.4 : 1.4);
-    ctx.globalAlpha = (0.15 + depth * 0.7) * (0.55 + 0.45 * e);
-    ctx.fillStyle = depth > 0.6 ? "#d6ecff" : "#9b6bff";
-    ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
+  // 2. a faint cold wash that only the charge brings up from the depths
+  if (e > 0.001) {
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    glow.addColorStop(0.0, `hsla(196,100%,60%,${0.18 * e})`);
+    glow.addColorStop(0.45, `hsla(258,85%,48%,${0.14 * e})`);
+    glow.addColorStop(1.0, "hsla(258,85%,30%,0)");
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+    ctx.globalCompositeOperation = "source-over";
   }
-  ctx.globalAlpha = 1;
 
-  // 3. swirling azure/violet currents (rotating conic wash)
-  const conic = ctx.createConicGradient(t * (0.35 + e * 1.1), cx, cy);
-  conic.addColorStop(0.00, `hsla(265,90%,${30 + e * 25}%,0)`);
-  conic.addColorStop(0.22, `hsla(282,90%,${46 + e * 24}%,${0.22 + e * 0.4})`);
-  conic.addColorStop(0.42, `hsla(196,100%,${52 + e * 28}%,${0.28 + e * 0.42})`);
-  conic.addColorStop(0.62, `hsla(265,90%,${40 + e * 24}%,${0.18 + e * 0.4})`);
-  conic.addColorStop(0.82, `hsla(196,100%,${54 + e * 24}%,${0.28 + e * 0.42})`);
-  conic.addColorStop(1.00, `hsla(265,90%,${30 + e * 25}%,0)`);
-  ctx.globalCompositeOperation = "lighter";
-  ctx.fillStyle = conic;
-  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
-
-  // 4. rippling liquid bands (sine-displaced concentric loops)
-  const bands = 5 + Math.floor(e * 4);
-  ctx.lineWidth = 1.2 + e * 2;
-  for (let b = 0; b < bands; b++) {
-    const fr = b / bands;
+  // 3. iris: a small set of clean concentric aperture rings that breathe inward.
+  //    These descend from the original portal's rings, but disciplined — thin,
+  //    cold, and few. The aperture widens (rings brighten) as the gate charges.
+  const ringCount = 5;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < ringCount; i++) {
+    const f = (i + 1) / (ringCount + 1);
+    const rr = radius * (0.18 + f * 0.74) * (0.97 + 0.03 * breath);
+    // A visible resting presence (0.10) so the dormant gate still reads as an
+    // arcane aperture, brightening as it charges.
+    const a = (0.10 + 0.16 * e) * (1 - f * 0.4);
     ctx.beginPath();
-    for (let k = 0; k <= 48; k++) {
-      const a = (k / 48) * Math.PI * 2;
-      const wob = Math.sin(a * 3 + t * 2 + b) * (radius * 0.045)
-        + Math.sin(a * 5 - t * 1.5 + b * 0.7) * (radius * 0.02);
-      const rr = radius * (0.18 + fr * 0.8) + wob;
-      const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
-      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = `hsla(${205 - fr * 35}, 100%, ${60 + e * 20}%, ${0.07 + e * 0.2})`;
+    ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+    ctx.strokeStyle = `hsla(${205 - f * 20},90%,${62 + e * 18}%,${a})`;
     ctx.stroke();
   }
 
-  // 5. hot core, brightening toward white as it charges
-  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-  core.addColorStop(0.0, `hsla(190,100%,${70 + e * 25}%,${0.32 + e * 0.6})`);
-  core.addColorStop(0.5, `hsla(265,90%,${45 + e * 20}%,${0.12 + e * 0.35})`);
-  core.addColorStop(1.0, "hsla(265,90%,20%,0)");
-  ctx.fillStyle = core;
-  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
-  ctx.globalCompositeOperation = "source-over";
+  // 4. pupil: a dead-black throat at rest. As charge climbs it ignites into a
+  //    cold-hot point — the way beginning to open. The dark core is the dread.
+  const pr = radius * (0.30 + 0.05 * breath);
+  const pupil = ctx.createRadialGradient(cx, cy, 0, cx, cy, pr);
+  if (e < 0.5) {
+    // still mostly a void: black throat ringed by the faintest cold edge
+    pupil.addColorStop(0.0, "#000005");
+    pupil.addColorStop(0.7, "#02010a");
+    pupil.addColorStop(1.0, `hsla(220,80%,30%,${0.12 + e * 0.3})`);
+    ctx.fillStyle = pupil;
+    ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // ignition: a hot core blooms toward white as it nears full
+    const k = (e - 0.5) / 0.5; // 0..1 across the upper half of charge
+    pupil.addColorStop(0.0, `hsla(190,100%,${78 + k * 20}%,${0.5 + k * 0.5})`);
+    pupil.addColorStop(0.5, `hsla(210,100%,${60 + k * 20}%,${0.3 + k * 0.4})`);
+    pupil.addColorStop(1.0, "hsla(258,90%,30%,0)");
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = pupil;
+    ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+  }
 
   ctx.restore(); // drop clip
 
-  // 6. event-horizon rim + bloom
+  // 5. event-horizon rim: a crisp dark lip with a cold inner light. It sharpens
+  //    and brightens with charge — the membrane between here and there.
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.lineWidth = 2 + e * 4;
-  ctx.strokeStyle = `hsla(${200 - e * 30}, 100%, ${66 + e * 20}%, ${0.5 + e * 0.5})`;
-  ctx.shadowBlur = 10 + e * 30;
-  ctx.shadowColor = `hsla(282,100%,70%,${0.5 + e * 0.5})`;
+  ctx.lineWidth = 2.5 + e * 3;
+  ctx.strokeStyle = `hsla(${205 - e * 20},100%,${58 + e * 22}%,${0.45 + e * 0.5})`;
+  ctx.shadowBlur = 8 + e * 26;
+  ctx.shadowColor = `hsla(220,100%,65%,${0.4 + e * 0.5})`;
   ctx.stroke();
   ctx.restore();
 
-  // 7. outer glow halo (grows with charge)
+  // 6. arcane rim ticks: short radial glyph-marks set into the rim, lit only as
+  //    the gate wakes. Fixed angles read as deliberate sigils, not motion.
+  if (e > 0.05) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < RIM_TICKS; i++) {
+      const ang = (i / RIM_TICKS) * Math.PI * 2 + t * 0.08;
+      const pulse = 0.5 + 0.5 * Math.sin(t * 1.4 + i * 1.7);
+      const a = e * (0.2 + 0.4 * pulse);
+      const r0 = radius * 0.98, r1 = radius * (1.06 + e * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0);
+      ctx.lineTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+      ctx.lineWidth = 1.5 + e;
+      ctx.strokeStyle = `hsla(196,100%,72%,${a})`;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 7. outer halo: a quiet bloom that swells with charge, bleeding the gate's
+  //    light into the surrounding void.
   if (e > 0.001) {
-    const ro = radius * (1.35 + e * 0.9);
-    const halo = ctx.createRadialGradient(cx, cy, radius * 0.85, cx, cy, ro);
-    halo.addColorStop(0, `hsla(272,90%,62%,${0.18 * e})`);
-    halo.addColorStop(1, "hsla(272,90%,62%,0)");
+    const ro = radius * (1.3 + e * 0.95);
+    const halo = ctx.createRadialGradient(cx, cy, radius * 0.9, cx, cy, ro);
+    halo.addColorStop(0, `hsla(248,90%,60%,${0.16 * e})`);
+    halo.addColorStop(0.6, `hsla(258,90%,55%,${0.07 * e})`);
+    halo.addColorStop(1, "hsla(258,90%,55%,0)");
     ctx.fillStyle = halo;
     ctx.beginPath();
     ctx.arc(cx, cy, ro, 0, Math.PI * 2);

@@ -1,9 +1,19 @@
 import type { ClientWorld } from "./world";
 import type { Assets } from "./assets";
+import { SHEETS } from "./assets";
 import type { Cosmetics, Facing } from "./types";
 import { ROOM_CONFIG } from "./config";
 import { drawPortal } from "./portalfx";
 import { tintedSheet, drawDrifter } from "./sprite";
+
+// Resolve the drawable sheet for a drifter: pick its roster sheet by sprite
+// index (wrapped defensively), hue-tinting only the sheets marked tintable.
+function sheetFor(assets: Assets, c: Cosmetics): CanvasImageSource {
+  const n = SHEETS.length;
+  const idx = ((c.sprite % n) + n) % n;
+  const img = assets.drifters[idx];
+  return SHEETS[idx].tintable ? tintedSheet(img, c.hue) : img;
+}
 
 const DRIFTER_SCALE = 0.6; // 88px cell -> ~53px on screen at 1x
 
@@ -70,54 +80,35 @@ const STARS = Array.from({ length: 140 }, (_, i) => {
   return { x: r, y: g, tw: (i % 7) / 7 };
 });
 
-// Larger, soft motes that drift slowly across the void.
-const MOTES = Array.from({ length: 22 }, (_, i) => {
-  const x = ((i * 22695477 + 1) >>> 0) / 0xffffffff;
-  const y = ((i * 69069 + 13) >>> 0) / 0xffffffff;
-  const sp = 0.004 + (i % 5) * 0.0015;
-  const hue = i % 2 ? 272 : 196;
-  return { x, y, sp, hue, r: 1.5 + (i % 4) * 0.8 };
-});
-
 function drawBackground(ctx: CanvasRenderingContext2D, vw: number, vh: number, tMs: number) {
-  ctx.fillStyle = "#060414";
+  // Deep void, pitched to the gate's abyssal palette so the two read as one place.
+  ctx.fillStyle = "#050310";
   ctx.fillRect(0, 0, vw, vh);
 
-  // soft nebula glow toward the seam
-  const neb = ctx.createRadialGradient(vw / 2, vh / 2, 0, vw / 2, vh / 2, Math.max(vw, vh) * 0.6);
-  neb.addColorStop(0, "rgba(70,40,120,0.22)");
-  neb.addColorStop(1, "rgba(6,4,20,0)");
+  // The gate is the only light in the void: a cool nebular glow centered on the
+  // portal, so the surrounding dark feels lit *by* the gate rather than decorated.
+  const px = ROOM_CONFIG.seamX * (vw / ROOM_CONFIG.arenaWidth);
+  const py = (ROOM_CONFIG.arenaHeight / 2) * (vh / ROOM_CONFIG.arenaHeight);
+  const neb = ctx.createRadialGradient(px, py, 0, px, py, Math.max(vw, vh) * 0.62);
+  neb.addColorStop(0, "rgba(48,40,110,0.26)");
+  neb.addColorStop(0.5, "rgba(24,20,66,0.12)");
+  neb.addColorStop(1, "rgba(5,3,16,0)");
   ctx.fillStyle = neb;
   ctx.fillRect(0, 0, vw, vh);
 
-  // twinkling stars
+  // twinkling stars (the original starfield, kept clean and restrained)
   for (const s of STARS) {
-    const a = 0.35 + 0.4 * Math.sin(tMs / 700 + s.tw * Math.PI * 2);
+    const a = 0.3 + 0.35 * Math.sin(tMs / 700 + s.tw * Math.PI * 2);
     ctx.globalAlpha = Math.max(0, a);
     ctx.fillStyle = "#cfe8ff";
     ctx.fillRect(s.x * vw, s.y * vh, 1.5, 1.5);
   }
-
-  // drifting glow motes
-  ctx.globalCompositeOperation = "lighter";
-  const drift = reduceMotion ? 0 : tMs / 1000;
-  for (const m of MOTES) {
-    const px = ((m.x + drift * m.sp) % 1) * vw;
-    const py = ((m.y + drift * m.sp * 0.6) % 1) * vh;
-    const a = 0.10 + 0.06 * Math.sin(tMs / 900 + m.x * 10);
-    const g = ctx.createRadialGradient(px, py, 0, px, py, m.r * 6);
-    g.addColorStop(0, `hsla(${m.hue},90%,70%,${a})`);
-    g.addColorStop(1, `hsla(${m.hue},90%,70%,0)`);
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(px, py, m.r * 6, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
 
-  // vignette to focus the eye on the arena center
-  const vig = ctx.createRadialGradient(vw / 2, vh / 2, Math.min(vw, vh) * 0.35, vw / 2, vh / 2, Math.max(vw, vh) * 0.7);
+  // a whisper of vignette at the very edges — focus without an obvious frame
+  const vig = ctx.createRadialGradient(px, py, Math.min(vw, vh) * 0.45, px, py, Math.max(vw, vh) * 0.78);
   vig.addColorStop(0, "rgba(0,0,0,0)");
-  vig.addColorStop(1, "rgba(0,0,0,0.55)");
+  vig.addColorStop(1, "rgba(0,0,0,0.4)");
   ctx.fillStyle = vig;
   ctx.fillRect(0, 0, vw, vh);
 }
@@ -333,7 +324,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
     if (outro >= 1) continue; // fully gone, awaiting prune
     const ring = r.cosmetics.visorHue;
     drawGroundShadow(ctx, px, py, scale, lift);
-    const sheet = tintedSheet(assets.drifter, r.cosmetics.hue);
+    const sheet = sheetFor(assets, r.cosmetics);
     if (intro < 1) {
       // expanding shimmer ring announces a stranger settling into the void
       ctx.save();
@@ -365,7 +356,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   const spx = world.self.x * sx, spy = world.self.y * sy;
   drawGroundShadow(ctx, spx, spy, scale, selfLift);
   drawPortalKiss(ctx, spx, spy - selfLift, cx, cy, rPortal, scale, e);
-  const selfSheet = tintedSheet(assets.drifter, world.selfCosmetics.hue);
+  const selfSheet = sheetFor(assets, world.selfCosmetics);
   drawDrifter(ctx, selfSheet, world.self.facing, world.self.moving, spx, spy - selfLift, scale, tMs);
   drawFlair(ctx, world.selfCosmetics, spx, spy - selfLift, scale, world.self.facing, tMs);
 

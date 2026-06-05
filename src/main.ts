@@ -15,7 +15,10 @@ const canvas = document.createElement("canvas");
 app.appendChild(canvas);
 const ctx = canvas.getContext("2d")!;
 let vw = 0, vh = 0;
-function resize() { vw = canvas.width = innerWidth; vh = canvas.height = innerHeight; }
+// Setting canvas.width resets all context state, so re-disable smoothing here.
+// Crisp nearest-neighbor sampling stops the sprite-sheet blit from bleeding
+// neighboring cells (the faint "boxes" beside the side-profile walk frames).
+function resize() { vw = canvas.width = innerWidth; vh = canvas.height = innerHeight; ctx.imageSmoothingEnabled = false; }
 addEventListener("resize", resize); resize();
 
 // Procedural favicon: a tiny azure/violet portal so the tab carries the identity.

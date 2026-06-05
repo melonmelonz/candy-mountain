@@ -10,6 +10,11 @@ export interface RoomConfig {
   minActiveToOpen: number;
 }
 
+// How many drifter sprite sheets exist in the roster (see assets.ts). Shared by
+// the client (random spawn) and the server (cosmetics sanitization) so an
+// out-of-range index from a client can be clamped authoritatively.
+export const SPRITE_SHEET_COUNT = 3;
+
 export const ROOM_CONFIG: RoomConfig = {
   arenaWidth: 1280,
   arenaHeight: 720,

@@ -1,6 +1,6 @@
 import type { Env } from "./index";
 import type { Player, PlayerId, RoomState, Cosmetics, Facing, Flair } from "../../src/game/types";
-import { ROOM_CONFIG } from "../../src/game/config";
+import { ROOM_CONFIG, SPRITE_SHEET_COUNT } from "../../src/game/config";
 import { tick } from "../../src/game/reducer";
 import { encode, decode, sanitizeChatText, type ClientMsg, type PlayerWire, type ServerMsg, type ChatMessage } from "../../src/protocol";
 import { todaysLink } from "./links";
@@ -10,7 +10,7 @@ const TICK_MS = 100; // 10 Hz
 const SPAWN_MARGIN = 80;
 const FACINGS: Facing[] = ["up", "down", "left", "right"];
 const FLAIRS: Flair[] = ["antenna", "backpack", "trail", "emblem"];
-const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 0, flair: "antenna" };
+const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 0, flair: "antenna", sprite: 0 };
 const MAX_CHAT_HISTORY = 10;
 const CHAT_RATE_LIMIT_MS = 1000; // 1 msg/sec per player
 
@@ -38,7 +38,11 @@ function sanitizeCosmetics(raw: unknown): Cosmetics {
   const visorHue =
     typeof c.visorHue === "number" && Number.isFinite(c.visorHue) ? (((c.visorHue % 360) + 360) % 360) : 0;
   const flair = FLAIRS.includes(c.flair as Flair) ? (c.flair as Flair) : "antenna";
-  return { hue, visorHue, flair };
+  const sprite =
+    typeof c.sprite === "number" && Number.isInteger(c.sprite) && c.sprite >= 0 && c.sprite < SPRITE_SHEET_COUNT
+      ? c.sprite
+      : 0;
+  return { hue, visorHue, flair, sprite };
 }
 
 // Names are auto-assigned and unique among currently-present players. They are

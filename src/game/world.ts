@@ -7,7 +7,7 @@ export interface ChatBubble { text: string; at: number; }
 
 export interface RemotePlayer extends PlayerWire { tx: number; ty: number; bornAt: number; leftAt?: number; bubble?: ChatBubble; } // tx/ty = lerp target; bornAt = first-seen ms; leftAt = vanish-started ms
 
-const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 190, flair: "emblem" };
+const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 190, flair: "emblem", sprite: 0 };
 
 export interface ClientWorld {
   selfId: string | null;
