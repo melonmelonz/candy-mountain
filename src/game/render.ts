@@ -5,7 +5,7 @@ import { ROOM_CONFIG } from "./config";
 import { drawPortal } from "./portalfx";
 import { tintedSheet, drawDrifter } from "./sprite";
 
-const DRIFTER_SCALE = 0.7; // 68px cell -> ~48px on screen at 1x
+const DRIFTER_SCALE = 0.6; // 88px cell -> ~53px on screen at 1x
 
 // Deterministic starfield so it does not swim between frames.
 const STARS = Array.from({ length: 140 }, (_, i) => {
@@ -94,7 +94,7 @@ export function drawOpenTransition(ctx: CanvasRenderingContext2D, vw: number, vh
 
 // Per-cosmetic flair drawn over the sprite at its screen anchor.
 function drawFlair(ctx: CanvasRenderingContext2D, c: Cosmetics, px: number, py: number, scale: number, facing: Facing, tMs: number) {
-  const half = (34 * scale);
+  const half = (44 * scale);
   const tint = `hsl(${c.visorHue} 90% 65%)`;
   switch (c.flair) {
     case "antenna": {

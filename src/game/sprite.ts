@@ -1,6 +1,6 @@
 import type { Facing } from "./types";
 
-export const CELL = 68;
+export const CELL = 88;
 export const COLS = 7;
 const WALK_FRAMES = 6; // cols 1..6
 const WALK_FPS = 10;
