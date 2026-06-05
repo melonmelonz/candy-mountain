@@ -50,9 +50,36 @@ describe("stepSelf", () => {
 
   it("clamps to arena bounds when moving right past arenaWidth", () => {
     const world = createWorld();
-    world.self.x = ROOM_CONFIG.arenaWidth - 1;
+    world.self.x = 100; // near side: normal controls, so right input clamps to arenaWidth
     stepSelf(world, { up: false, down: false, left: false, right: true }, 10); // large dt
     expect(world.self.x).toBe(ROOM_CONFIG.arenaWidth);
+  });
+
+  it("on the far side of the seam, pressing right moves -x and faces left", () => {
+    const world = createWorld();
+    world.self.x = ROOM_CONFIG.seamX + 100; // far side
+    const startX = world.self.x;
+    stepSelf(world, { up: false, down: false, left: false, right: true }, 0.1);
+    expect(world.self.x).toBeCloseTo(startX - SPEED * 0.1, 5);
+    expect(world.self.facing).toBe("left");
+  });
+
+  it("on the far side of the seam, pressing down moves -y and faces up", () => {
+    const world = createWorld();
+    world.self.x = ROOM_CONFIG.seamX + 100; // far side
+    const startY = world.self.y;
+    stepSelf(world, { up: false, down: true, left: false, right: false }, 0.1);
+    expect(world.self.y).toBeCloseTo(startY - SPEED * 0.1, 5);
+    expect(world.self.facing).toBe("up");
+  });
+
+  it("controls are normal exactly at the seam (x === seamX is not inverted)", () => {
+    const world = createWorld();
+    world.self.x = ROOM_CONFIG.seamX; // exactly on the seam -> normal
+    const startX = world.self.x;
+    stepSelf(world, { up: false, down: false, left: false, right: true }, 0.1);
+    expect(world.self.x).toBeCloseTo(startX + SPEED * 0.1, 5);
+    expect(world.self.facing).toBe("right");
   });
 });
 

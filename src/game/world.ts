@@ -65,6 +65,12 @@ const SPEED = 220; // px/sec
 export function stepSelf(world: ClientWorld, input: { up: boolean; down: boolean; left: boolean; right: boolean }, dt: number) {
   let dx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   let dy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
+  // The far side of the seam is an inverted realm: both control axes flip while
+  // the drifter stands there. Facing is derived from dx/dy *after* the flip, so
+  // the drifter visibly walks opposite the player's input — the diegetic tell
+  // that you have crossed over. The strict ">" keeps a drifter exactly on the
+  // seam under normal controls.
+  if (world.self.x > ROOM_CONFIG.seamX) { dx = -dx; dy = -dy; }
   world.self.moving = dx !== 0 || dy !== 0;
   if (world.self.moving) {
     const len = Math.hypot(dx, dy) || 1;
