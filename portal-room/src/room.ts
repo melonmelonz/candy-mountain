@@ -8,6 +8,9 @@ import { generateCandidates, assignName } from "../../src/game/namegen";
 
 const TICK_MS = 100; // 10 Hz
 const SPAWN_MARGIN = 80;
+// Drifters spawn out toward the edges, never on top of the portal, so every
+// arrival has a journey inward. Reject any roll closer than this to the gate.
+const MIN_PORTAL_DIST = 320;
 const FACINGS: Facing[] = ["up", "down", "left", "right"];
 const FLAIRS: Flair[] = ["antenna", "backpack", "trail", "emblem"];
 const DEFAULT_COSMETICS: Cosmetics = { hue: 0, visorHue: 0, flair: "antenna", sprite: 0 };
@@ -24,6 +27,15 @@ function dayIdNow(): string {
 }
 
 function randomSpawn(): { x: number; y: number } {
+  const portalX = ROOM_CONFIG.seamX;
+  const portalY = ROOM_CONFIG.arenaHeight / 2;
+  // Re-roll until the spawn lands at least MIN_PORTAL_DIST from the gate; bail
+  // out after a bounded number of tries so a tiny arena can never hang here.
+  for (let i = 0; i < 24; i++) {
+    const x = SPAWN_MARGIN + Math.random() * (ROOM_CONFIG.arenaWidth - SPAWN_MARGIN * 2);
+    const y = SPAWN_MARGIN + Math.random() * (ROOM_CONFIG.arenaHeight - SPAWN_MARGIN * 2);
+    if (Math.hypot(x - portalX, y - portalY) >= MIN_PORTAL_DIST) return { x, y };
+  }
   return {
     x: SPAWN_MARGIN + Math.random() * (ROOM_CONFIG.arenaWidth - SPAWN_MARGIN * 2),
     y: SPAWN_MARGIN + Math.random() * (ROOM_CONFIG.arenaHeight - SPAWN_MARGIN * 2),
