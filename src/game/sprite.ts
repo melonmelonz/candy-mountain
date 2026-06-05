@@ -150,6 +150,66 @@ export const TARGET_PX = 72;
 /** Scratch canvas for the new shimmer implementation (char-sized). */
 let charShimmerScratch: HTMLCanvasElement | null = null;
 
+// ---------------------------------------------------------------------------
+// Private helper: shared cell resolution
+// ---------------------------------------------------------------------------
+
+interface ResolvedCell {
+  img: HTMLImageElement;
+  sx: number;
+  sy: number;
+  cell: number;
+}
+
+/**
+ * Resolves the atlas image and source rect for a given character, facing, and
+ * motion state. Returns null if the character is undefined or has no usable
+ * image loaded.
+ *
+ * Resolution order:
+ * 1. selectState -> facingToDir8 -> resolveDir against the state atlas.
+ * 2. Fallback: resolveDir against rotations.dirs (still frame, fps irrelevant).
+ *
+ * fps is chosen here (10 for walk, 4 for idle) so callers never need to
+ * re-examine MOVE_STATES.
+ */
+function resolveCell(
+  assets: Assets,
+  charIndex: number,
+  facing: Facing,
+  moving: boolean,
+  tMs: number,
+): ResolvedCell | null {
+  const char = assets.roster.characters[charIndex];
+  if (!char) return null;
+
+  const want = facingToDir8(facing);
+  const stateName = selectState(char, moving);
+  const cell = char.cell;
+
+  if (stateName !== null) {
+    const st = char.states[stateName];
+    const dir = resolveDir(want, st.dirs);
+    if (dir !== null) {
+      const img = assets.images.get(st.file);
+      if (img) {
+        const fps = MOVE_STATES.includes(stateName) ? 10 : 4;
+        const col = pickFrame(fps, st.frames, tMs);
+        const row = DIR_ORDER.indexOf(dir);
+        return { img, sx: col * cell, sy: row * cell, cell };
+      }
+    }
+  }
+
+  // Fallback: rotation still
+  const dir = resolveDir(want, char.rotations.dirs);
+  if (dir === null) return null;
+  const img = assets.images.get(char.rotations.file);
+  if (!img) return null;
+  const col = DIR_ORDER.indexOf(dir);
+  return { img, sx: col * cell, sy: 0, cell };
+}
+
 /**
  * Draw a manifest-driven character at (px, py) in world-space device pixels.
  * The character's native `cell` px is scaled to TARGET_PX * worldScale.
@@ -165,50 +225,16 @@ export function drawCharacter(
   worldScale: number,
   tMs: number,
 ): void {
-  const char = assets.roster.characters[charIndex];
-  if (!char) return;
+  const resolved = resolveCell(assets, charIndex, facing, moving, tMs);
+  if (!resolved) return;
 
-  const want = facingToDir8(facing);
-  const stateName = selectState(char, moving);
-  const cell = char.cell;
-
-  let srcImg: HTMLImageElement | undefined;
-  let srcRow = 0;
-  let srcCol = 0;
-
-  if (stateName !== null) {
-    const st = char.states[stateName];
-    const dir = resolveDir(want, st.dirs);
-    if (dir !== null) {
-      const img = assets.images.get(st.file);
-      if (img) {
-        const fps = MOVE_STATES.includes(stateName) ? 10 : 4;
-        srcImg = img;
-        srcRow = DIR_ORDER.indexOf(dir);
-        srcCol = pickFrame(fps, st.frames, tMs);
-      }
-    }
-  }
-
-  // Fallback: rotation still
-  if (!srcImg) {
-    const dir = resolveDir(want, char.rotations.dirs);
-    if (dir === null) return;
-    const img = assets.images.get(char.rotations.file);
-    if (!img) return;
-    srcImg = img;
-    srcRow = 0;
-    srcCol = DIR_ORDER.indexOf(dir);
-  }
-
+  const { img, sx, sy, cell } = resolved;
   const drawScale = (TARGET_PX / cell) * worldScale;
   const dw = cell * drawScale;
   const dh = cell * drawScale;
-  const sx = srcCol * cell;
-  const sy = srcRow * cell;
 
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(srcImg, sx, sy, cell, cell, px - dw / 2, py - dh / 2, dw, dh);
+  ctx.drawImage(img, sx, sy, cell, cell, px - dw / 2, py - dh / 2, dw, dh);
 }
 
 /**
@@ -229,40 +255,10 @@ export function drawNegativeShimmerChar(
 ): void {
   if (alpha <= 0.01) return;
 
-  const char = assets.roster.characters[charIndex];
-  if (!char) return;
+  const resolved = resolveCell(assets, charIndex, facing, moving, tMs);
+  if (!resolved) return;
 
-  const want = facingToDir8(facing);
-  const stateName = selectState(char, moving);
-  const cell = char.cell;
-
-  let srcImg: HTMLImageElement | undefined;
-  let srcRow = 0;
-  let srcCol = 0;
-
-  if (stateName !== null) {
-    const st = char.states[stateName];
-    const dir = resolveDir(want, st.dirs);
-    if (dir !== null) {
-      const img = assets.images.get(st.file);
-      if (img) {
-        const fps = MOVE_STATES.includes(stateName) ? 10 : 4;
-        srcImg = img;
-        srcRow = DIR_ORDER.indexOf(dir);
-        srcCol = pickFrame(fps, st.frames, tMs);
-      }
-    }
-  }
-
-  if (!srcImg) {
-    const dir = resolveDir(want, char.rotations.dirs);
-    if (dir === null) return;
-    const img = assets.images.get(char.rotations.file);
-    if (!img) return;
-    srcImg = img;
-    srcRow = 0;
-    srcCol = DIR_ORDER.indexOf(dir);
-  }
+  const { img, sx, sy, cell } = resolved;
 
   // Build/resize the scratch canvas to match this character's cell size.
   if (!charShimmerScratch) {
@@ -274,17 +270,15 @@ export function drawNegativeShimmerChar(
   }
 
   const c = charShimmerScratch.getContext("2d")!;
-  const sx = srcCol * cell;
-  const sy = srcRow * cell;
 
   c.globalCompositeOperation = "source-over";
   c.clearRect(0, 0, cell, cell);
-  c.drawImage(srcImg, sx, sy, cell, cell, 0, 0, cell, cell);
+  c.drawImage(img, sx, sy, cell, cell, 0, 0, cell, cell);
   c.globalCompositeOperation = "difference";
   c.fillStyle = "#ffffff";
   c.fillRect(0, 0, cell, cell);
   c.globalCompositeOperation = "destination-in";
-  c.drawImage(srcImg, sx, sy, cell, cell, 0, 0, cell, cell);
+  c.drawImage(img, sx, sy, cell, cell, 0, 0, cell, cell);
   c.globalCompositeOperation = "source-over";
 
   const drawScale = (TARGET_PX / cell) * worldScale;
