@@ -1,0 +1,40 @@
+{
+  "gates": [
+    {
+      "id": "d371f1dc-b42f-4028-8cdb-35c6943e666e",
+      "cell": 64,
+      "frames": 9,
+      "file": "d371f1dc-b42f-4028-8cdb-35c6943e666e.png"
+    },
+    {
+      "id": "219a17cd-640b-46da-9c9e-0bbebcf170b5",
+      "cell": 64,
+      "frames": 9,
+      "file": "219a17cd-640b-46da-9c9e-0bbebcf170b5.png"
+    },
+    {
+      "id": "00556895-076a-4ca7-9c7f-1fda8fc0fcb5",
+      "cell": 64,
+      "frames": 9,
+      "file": "00556895-076a-4ca7-9c7f-1fda8fc0fcb5.png"
+    },
+    {
+      "id": "0c074dde-67c6-4907-8ae7-cc927e2a453a",
+      "cell": 64,
+      "frames": 9,
+      "file": "0c074dde-67c6-4907-8ae7-cc927e2a453a.png"
+    },
+    {
+      "id": "cde806b2-abef-4854-aaea-605fa7347dec",
+      "cell": 64,
+      "frames": 9,
+      "file": "cde806b2-abef-4854-aaea-605fa7347dec.png"
+    },
+    {
+      "id": "cb9c27af-7a4f-4c87-ad25-4a8267ed15a8",
+      "cell": 64,
+      "frames": 9,
+      "file": "cb9c27af-7a4f-4c87-ad25-4a8267ed15a8.png"
+    }
+  ]
+}

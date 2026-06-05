@@ -1,0 +1,742 @@
+{
+  "characters": [
+    {
+      "slug": "medusa-voidborne",
+      "name": "Medusa - Voidborne",
+      "cell": 92,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "medusa-voidborne/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "animating": {
+          "file": "medusa-voidborne/animating.png",
+          "frames": 4,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        },
+        "leaning-forward-unleashing-a-petrifying-gaze-eyes": {
+          "file": "medusa-voidborne/leaning-forward-unleashing-a-petrifying-gaze-eyes.png",
+          "frames": 7,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "ra-void-sun",
+      "name": "Ra - Void Sun",
+      "cell": 88,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "ra-void-sun/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {}
+    },
+    {
+      "slug": "nyx",
+      "name": "Nyx",
+      "cell": 68,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "nyx/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {}
+    },
+    {
+      "slug": "hel",
+      "name": "Hel",
+      "cell": 88,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "hel/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "animating": {
+          "file": "hel/animating.png",
+          "frames": 4,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        },
+        "reaching-forward-with-a-chilling-hand": {
+          "file": "hel/reaching-forward-with-a-chilling-hand.png",
+          "frames": 9,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "chang-e",
+      "name": "Chang'e",
+      "cell": 92,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "chang-e/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "casting-a-magic-spell-with-raised-hands": {
+          "file": "chang-e/casting-a-magic-spell-with-raised-hands.png",
+          "frames": 9,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        },
+        "animating": {
+          "file": "chang-e/animating.png",
+          "frames": 4,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "ammit",
+      "name": "Ammit",
+      "cell": 92,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "ammit/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "animating": {
+          "file": "ammit/animating.png",
+          "frames": 4,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        },
+        "lunging-forward-to-bite": {
+          "file": "ammit/lunging-forward-to-bite.png",
+          "frames": 9,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "rakshasa",
+      "name": "Rakshasa",
+      "cell": 96,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "rakshasa/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "animating": {
+          "file": "rakshasa/animating.png",
+          "frames": 4,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        },
+        "slashing-with-sharp-claws": {
+          "file": "rakshasa/slashing-with-sharp-claws.png",
+          "frames": 9,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "zhong-kui",
+      "name": "Zhong Kui",
+      "cell": 92,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "zhong-kui/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "animating": {
+          "file": "zhong-kui/animating.png",
+          "frames": 4,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        },
+        "throwing-a-powerful-punch-forward": {
+          "file": "zhong-kui/throwing-a-powerful-punch-forward.png",
+          "frames": 9,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "durga",
+      "name": "Durga",
+      "cell": 92,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "durga/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "animating": {
+          "file": "durga/animating.png",
+          "frames": 4,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        },
+        "thrusting-forward-with-a-trident": {
+          "file": "durga/thrusting-forward-with-a-trident.png",
+          "frames": 9,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "thoth",
+      "name": "Thoth",
+      "cell": 92,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "thoth/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "animating": {
+          "file": "thoth/animating.png",
+          "frames": 4,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        },
+        "raising-a-staff-to-cast-a-magic-spell": {
+          "file": "thoth/raising-a-staff-to-cast-a-magic-spell.png",
+          "frames": 9,
+          "dirs": [
+            "south",
+            "east",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "thorn",
+      "name": "Thorn",
+      "cell": 68,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "thorn/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {}
+    },
+    {
+      "slug": "heavy-armor",
+      "name": "Heavy Armor",
+      "cell": 68,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "heavy-armor/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {}
+    },
+    {
+      "slug": "laser-sword",
+      "name": "Laser Sword",
+      "cell": 184,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "laser-sword/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "animating": {
+          "file": "laser-sword/animating.png",
+          "frames": 4,
+          "dirs": [
+            "south",
+            "south-east",
+            "east",
+            "north-east",
+            "north",
+            "north-west",
+            "west",
+            "south-west"
+          ]
+        },
+        "animating-2": {
+          "file": "laser-sword/animating-2.png",
+          "frames": 6,
+          "dirs": [
+            "south",
+            "east",
+            "north",
+            "west"
+          ]
+        },
+        "two-handed-downward-slash-with-a-glowing-energy-sw": {
+          "file": "laser-sword/two-handed-downward-slash-with-a-glowing-energy-sw.png",
+          "frames": 9,
+          "dirs": [
+            "south-east",
+            "east",
+            "north-east",
+            "north",
+            "north-west",
+            "west",
+            "south-west"
+          ]
+        },
+        "two-handed-downward-slash-with-a-glowing-energy-sw-2": {
+          "file": "laser-sword/two-handed-downward-slash-with-a-glowing-energy-sw-2.png",
+          "frames": 9,
+          "dirs": [
+            "south"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "lilac-drifter",
+      "name": "Lilac Drifter",
+      "cell": 168,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "lilac-drifter/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "animating": {
+          "file": "lilac-drifter/animating.png",
+          "frames": 6,
+          "dirs": [
+            "south",
+            "east",
+            "north",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "drifter",
+      "name": "Drifter",
+      "cell": 68,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "drifter/rotations.png",
+        "dirs": [
+          "south",
+          "east",
+          "north",
+          "west"
+        ]
+      },
+      "states": {
+        "walking": {
+          "file": "drifter/walking.png",
+          "frames": 6,
+          "dirs": [
+            "south",
+            "east",
+            "north",
+            "west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "red-hair",
+      "name": "Red Hair",
+      "cell": 48,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "red-hair/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "walking": {
+          "file": "red-hair/walking.png",
+          "frames": 6,
+          "dirs": [
+            "south",
+            "south-east",
+            "east",
+            "north-east",
+            "north",
+            "north-west",
+            "west",
+            "south-west"
+          ]
+        }
+      }
+    },
+    {
+      "slug": "cindra",
+      "name": "Cindra",
+      "cell": 68,
+      "dirOrder": [
+        "south",
+        "south-east",
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west"
+      ],
+      "rotations": {
+        "file": "cindra/rotations.png",
+        "dirs": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      "states": {
+        "casting-a-fireball": {
+          "file": "cindra/casting-a-fireball.png",
+          "frames": 6,
+          "dirs": [
+            "south",
+            "south-east",
+            "east",
+            "north-east",
+            "north",
+            "north-west",
+            "west",
+            "south-west"
+          ]
+        }
+      }
+    }
+  ]
+}
