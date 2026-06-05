@@ -16,6 +16,7 @@ export interface ClientWorld {
   remotes: Map<string, RemotePlayer>;
   spots: Spot[];
   charge: number;
+  gateId: string;
 }
 
 export function createWorld(): ClientWorld {
@@ -26,6 +27,7 @@ export function createWorld(): ClientWorld {
     remotes: new Map(),
     spots: [],
     charge: 0,
+    gateId: "d371f1dc-b42f-4028-8cdb-35c6943e666e", // overwritten by server welcome/state (Task 7)
   };
 }
 

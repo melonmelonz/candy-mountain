@@ -1,46 +1,10 @@
 import type { ClientWorld } from "./world";
 import type { Assets } from "./assets";
-import { SHEETS } from "./assets";
 import type { Cosmetics, Facing } from "./types";
 import { ROOM_CONFIG } from "./config";
-import { drawPortal } from "./portalfx";
-import { tintedSheet, drawDrifter, drawNegativeShimmer } from "./sprite";
+import { drawGate } from "./gate";
+import { drawCharacter, drawNegativeShimmerChar } from "./sprite";
 import { createBackground, drawBackground, type BgState } from "./background";
-
-// Resolve the drawable sheet for a drifter: pick its roster sheet by sprite
-// index (wrapped defensively), hue-tinting only the sheets marked tintable.
-function sheetFor(assets: Assets, c: Cosmetics): CanvasImageSource {
-  const n = SHEETS.length;
-  const idx = ((c.sprite % n) + n) % n;
-  const img = assets.drifters[idx];
-  return SHEETS[idx].tintable ? tintedSheet(img, c.hue) : img;
-}
-
-const DRIFTER_SCALE = 0.6; // 88px cell -> ~53px on screen at 1x
-
-// Respect the OS "reduce motion" setting for the most movement-heavy effects
-// (hover bob, drifting motes). Tracked live so toggling it takes effect at once.
-let reduceMotion = false;
-if (typeof matchMedia !== "undefined") {
-  const mq = matchMedia("(prefers-reduced-motion: reduce)");
-  reduceMotion = mq.matches;
-  mq.addEventListener?.("change", (ev) => { reduceMotion = ev.matches; });
-}
-
-// Stable per-player phase so hover bobs are desynced between drifters.
-function phaseOf(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return (h % 1000) / 1000 * Math.PI * 2;
-}
-
-// Gentle vertical hover; crystalline drifters never quite touch the ground.
-function hoverOffset(tMs: number, phase: number, moving: boolean, sx: number): number {
-  if (reduceMotion) return 0;
-  const amp = moving ? 1.4 : 2.8;
-  const period = moving ? 220 : 900;
-  return Math.sin(tMs / period + phase) * amp * sx;
-}
 
 // Drifters near the gate catch its light: a soft additive halo that grows with
 // proximity and with portal charge. cx/cy/rPortal are the portal's screen geometry.
@@ -62,14 +26,13 @@ function drawPortalKiss(ctx: CanvasRenderingContext2D, px: number, py: number, c
   ctx.restore();
 }
 
-// Soft contact shadow grounds the floating sprite. Shrinks as the drifter rises.
-function drawGroundShadow(ctx: CanvasRenderingContext2D, px: number, py: number, scale: number, lift: number) {
-  const shrink = 1 - Math.min(0.35, Math.abs(lift) * 0.04);
+// Soft contact shadow grounds the standing sprite at its feet.
+function drawGroundShadow(ctx: CanvasRenderingContext2D, px: number, py: number, scale: number) {
   ctx.save();
-  ctx.globalAlpha = 0.26 * shrink;
+  ctx.globalAlpha = 0.26;
   ctx.fillStyle = "#000";
   ctx.beginPath();
-  ctx.ellipse(px, py + 26 * scale, 26 * scale * shrink, 8 * scale * shrink, 0, 0, Math.PI * 2);
+  ctx.ellipse(px, py + 26 * scale, 26 * scale, 8 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -238,12 +201,12 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   ctx.fillStyle = seam;
   ctx.fillRect(cx - 1, 0, 2, vh);
 
-  // portal brightness reflects charge
-  drawPortal(ctx, cx, cy, 72 * sx, world.charge, tMs);
+  // animated gate; brightness/spin reflect charge
+  drawGate(ctx, assets, world.gateId, cx, cy, sx, world.charge, tMs);
 
-  // spots
+  // spots (neutral cool palette on both sides; portal-agnostic)
   for (const s of world.spots) {
-    const base = s.side === "left" ? "#00e0ff" : "#ff8ad1";
+    const base = "#9fe8ff";
     const r = ROOM_CONFIG.spotRadius * sx;
     if (s.covered) {
       const pulse = 0.6 + 0.4 * Math.sin(tMs / 200);
@@ -264,7 +227,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   for (const s of world.spots) {
     if (!s.covered) continue;
     const sxp = s.pos.x * sx, syp = s.pos.y * sy;
-    const col = s.side === "left" ? "0,224,255" : "255,138,209";
+    const col = "180,230,255"; // neutral cool on both sides
     const segs = 7;
     for (let i = 0; i < segs; i++) {
       const f = ((i / segs) + (tMs / 1400)) % 1; // travels pad(0) -> portal(1)
@@ -280,20 +243,21 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
   }
   ctx.restore();
 
-  const scale = sx * DRIFTER_SCALE;
+  // Cosmetic helpers (shadow, flair, bubbles, portal-kiss) keep their old
+  // proportions off `scale`; the character sprite itself draws at `sx`.
+  const scale = sx * 0.6;
   const rPortal = 72 * sx;
   const e = Math.max(0, Math.min(1, world.charge / 100));
 
   // remote players
   for (const r of world.remotes.values()) {
-    const lift = hoverOffset(tMs, phaseOf(r.id), r.moving, sx);
     const px = r.x * sx, py = r.y * sy;
     const intro = Math.min(1, (tMs - r.bornAt) / 600); // materialize on arrival
     const outro = r.leftAt !== undefined ? Math.min(1, (tMs - r.leftAt) / 600) : 0; // dissolve on leave
     if (outro >= 1) continue; // fully gone, awaiting prune
     const ring = r.cosmetics.visorHue;
-    drawGroundShadow(ctx, px, py, scale, lift);
-    const sheet = sheetFor(assets, r.cosmetics);
+    const intensity = Math.min(intro, 1 - outro);
+    drawGroundShadow(ctx, px, py, scale);
     if (intro < 1) {
       // expanding shimmer ring announces a stranger settling into the void
       ctx.save();
@@ -301,7 +265,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
       ctx.globalAlpha = (1 - intro) * 0.7;
       ctx.strokeStyle = `hsl(${ring} 90% 70%)`;
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(px, py - lift, 8 * scale + intro * 42 * scale, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, py, 8 * scale + intro * 42 * scale, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     } else if (outro > 0) {
       // collapsing ring marks a drifter slipping back out of the void
@@ -310,39 +274,36 @@ export function drawScene(ctx: CanvasRenderingContext2D, world: ClientWorld, ass
       ctx.globalAlpha = (1 - outro) * 0.7;
       ctx.strokeStyle = `hsl(${ring} 90% 70%)`;
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(px, py - lift, 8 * scale + (1 - outro) * 42 * scale, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, py, 8 * scale + (1 - outro) * 42 * scale, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
-    ctx.globalAlpha = Math.min(intro, 1 - outro);
-    drawPortalKiss(ctx, px, py - lift, cx, cy, rPortal, scale, e);
-    drawDrifter(ctx, sheet, r.facing, r.moving, px, py - lift, scale, tMs);
+    ctx.globalAlpha = intensity;
+    drawPortalKiss(ctx, px, py, cx, cy, rPortal, scale, e);
+    drawCharacter(ctx, assets, r.cosmetics.sprite, r.facing, r.moving, px, py, sx, tMs);
     if (r.x > ROOM_CONFIG.seamX) {
-      drawNegativeShimmer(ctx, sheet, r.facing, r.moving, px, py - lift, scale, tMs, 0.4 * Math.min(intro, 1 - outro));
+      drawNegativeShimmerChar(ctx, assets, r.cosmetics.sprite, r.facing, r.moving, px, py, sx, tMs, 0.4 * intensity);
     }
-    drawFlair(ctx, r.cosmetics, px, py - lift, scale, r.facing, tMs);
+    drawFlair(ctx, r.cosmetics, px, py, scale, r.facing, tMs);
     ctx.globalAlpha = 1;
   }
 
   // self
-  const selfLift = hoverOffset(tMs, 0, world.self.moving, sx);
   const spx = world.self.x * sx, spy = world.self.y * sy;
-  drawGroundShadow(ctx, spx, spy, scale, selfLift);
-  drawPortalKiss(ctx, spx, spy - selfLift, cx, cy, rPortal, scale, e);
-  const selfSheet = sheetFor(assets, world.selfCosmetics);
-  drawDrifter(ctx, selfSheet, world.self.facing, world.self.moving, spx, spy - selfLift, scale, tMs);
+  drawGroundShadow(ctx, spx, spy, scale);
+  drawPortalKiss(ctx, spx, spy, cx, cy, rPortal, scale, e);
+  drawCharacter(ctx, assets, world.selfCosmetics.sprite, world.self.facing, world.self.moving, spx, spy, sx, tMs);
   if (world.self.x > ROOM_CONFIG.seamX) {
-    drawNegativeShimmer(ctx, selfSheet, world.self.facing, world.self.moving, spx, spy - selfLift, scale, tMs, 0.4);
+    drawNegativeShimmerChar(ctx, assets, world.selfCosmetics.sprite, world.self.facing, world.self.moving, spx, spy, sx, tMs, 0.4);
   }
-  drawFlair(ctx, world.selfCosmetics, spx, spy - selfLift, scale, world.self.facing, tMs);
+  drawFlair(ctx, world.selfCosmetics, spx, spy, scale, world.self.facing, tMs);
 
   // speech bubbles, drawn last so they sit above every drifter
   for (const r of world.remotes.values()) {
     if (!r.bubble) continue;
     if (r.leftAt !== undefined && tMs - r.leftAt >= 600) continue;
-    const lift = hoverOffset(tMs, phaseOf(r.id), r.moving, sx);
-    drawSpeechBubble(ctx, r.bubble.text, r.name, r.x * sx, r.y * sy - lift - 40 * scale, scale, r.cosmetics.visorHue, tMs, r.bubble.at);
+    drawSpeechBubble(ctx, r.bubble.text, r.name, r.x * sx, r.y * sy - 40 * scale, scale, r.cosmetics.visorHue, tMs, r.bubble.at);
   }
   if (world.self.bubble) {
-    drawSpeechBubble(ctx, world.self.bubble.text, world.self.name || "you", spx, spy - selfLift - 40 * scale, scale, world.selfCosmetics.visorHue, tMs, world.self.bubble.at);
+    drawSpeechBubble(ctx, world.self.bubble.text, world.self.name || "you", spx, spy - 40 * scale, scale, world.selfCosmetics.visorHue, tMs, world.self.bubble.at);
   }
 }
